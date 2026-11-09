@@ -1,0 +1,869 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#14062b">
+<title>Kawaii Player</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&family=Unbounded:wght@700;900&display=swap" rel="stylesheet">
+<style>
+/* Layout: one phone-width column. Stained-glass canvas behind, glowing player card (with live Studio) on top, tabs below: Animes A-Z, Sons, Favoris, Blind test. */
+:root{
+  --ink:#0b0618;
+  --card:#0a0520;
+  --pink:#ff5fd2;
+  --violet:#9b5cff;
+  --cyan:#27d9ff;
+  --ok:#3ee08f;
+  --no:#ff4d6d;
+  --text:#ffffff;
+  --muted:#cdbdf2;
+  --line:rgba(255,255,255,.14);
+  --display:'Unbounded','Arial Black',system-ui,sans-serif;
+  --body:'Nunito',system-ui,-apple-system,'Segoe UI',sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100%}
+[hidden]{display:none!important}
+body{
+  background:var(--ink);color:var(--text);font-family:var(--body);font-size:15px;
+  padding-block:max(14px,env(safe-area-inset-top)) max(28px,env(safe-area-inset-bottom));
+  padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right));
+  overflow-x:hidden;
+}
+#glass{position:fixed;inset:0;width:100%;height:100%;z-index:-3;display:block}
+#artbg{position:fixed;inset:-40px;z-index:-2;background-size:cover;background-position:center;filter:blur(46px) saturate(1.4);opacity:.55;transition:background-image .4s}
+.shade{position:fixed;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(20,6,43,.25) 0%,rgba(20,6,43,.55) 45%,rgba(11,6,24,.92) 100%)}
+.wrap{max-width:460px;margin:0 auto;display:flex;flex-direction:column;gap:18px;min-width:0}
+button{font-family:inherit}
+
+header{display:flex;flex-direction:column;gap:12px}
+.brand{display:flex;align-items:center;justify-content:space-between}
+.logo{font-family:var(--display);font-weight:900;font-size:19px;letter-spacing:.02em;font-style:italic;
+  background:linear-gradient(90deg,#fff,var(--pink) 55%,var(--cyan));-webkit-background-clip:text;background-clip:text;color:transparent}
+.badge{font:900 10.5px var(--body);letter-spacing:.1em;text-transform:uppercase;color:#fff;background:linear-gradient(135deg,var(--pink),var(--violet));padding:6px 10px;border-radius:999px;box-shadow:0 0 14px rgba(255,95,210,.45)}
+form{display:flex;gap:8px}
+.field{flex:1;min-width:0;display:flex;align-items:center;gap:8px;background:rgba(10,5,32,.72);border:1.5px solid rgba(155,92,255,.7);border-radius:999px;padding:0 14px;box-shadow:0 0 18px rgba(155,92,255,.35)}
+.field svg{flex:none;opacity:.8}
+.field input{flex:1;min-width:0;background:transparent;border:0;outline:0;color:#fff;font:700 15px var(--body);padding:12px 0}
+.field input::placeholder{color:#a995d6}
+.go{border:0;border-radius:999px;padding:0 18px;font:900 13px var(--body);color:#fff;cursor:pointer;background:linear-gradient(135deg,var(--pink),var(--violet));box-shadow:0 0 18px rgba(255,95,210,.55)}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 6px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;border:1px solid var(--line);background:rgba(10,5,32,.6);color:#fff;border-radius:999px;padding:7px 13px;font:800 12.5px var(--body);cursor:pointer}
+.chip:hover,.chip:focus-visible{border-color:var(--pink);outline:0}
+
+/* player card */
+.player{
+  background:var(--card);border-radius:34px;padding:14px 14px 16px;position:relative;
+  box-shadow:0 0 0 2.5px #2c0c63,0 0 30px 6px rgba(155,92,255,.6),inset 0 0 26px rgba(155,92,255,.35);
+}
+.cover{position:relative;aspect-ratio:1/1;width:100%;border-radius:22px;overflow:hidden;background:#241048}
+.cover img{width:100%;height:100%;object-fit:cover;display:block}
+.cover .ph{position:absolute;inset:0;display:grid;place-items:center;font:900 44px var(--display);color:rgba(255,255,255,.35);background:linear-gradient(135deg,#3b1275,#a1359a)}
+.cover::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 55%,rgba(10,5,32,.85));pointer-events:none}
+.meta{display:flex;align-items:flex-end;gap:12px;margin-top:-2px;padding:12px 4px 0}
+.meta .txt{flex:1;min-width:0}
+.artist{font:800 13px var(--body);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.title{font:900 21px/1.15 var(--body);margin:2px 0 3px;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.mode{font:800 13px var(--body);letter-spacing:.04em;color:#b79cff;text-transform:uppercase}
+.disc{flex:none;width:76px;height:76px;border-radius:50%;position:relative;
+  background:repeating-radial-gradient(circle at 50% 50%,#0c0c12 0 2px,#1b1b26 2px 3px);box-shadow:0 0 0 2px #2a1a55,0 6px 18px rgba(0,0,0,.6)}
+.disc::before{content:"";position:absolute;inset:27px;border-radius:50%;background:var(--pink);box-shadow:0 0 0 5px #0c0c12}
+.disc::after{content:"";position:absolute;inset:36px;border-radius:50%;background:#fff}
+.disc.spin{animation:spin 3.2s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.heart{flex:none;border:0;background:transparent;cursor:pointer;padding:4px;color:#fff;align-self:center}
+.heart svg{width:30px;height:30px;display:block}
+.heart[aria-pressed="true"] svg{fill:#ff2d55;stroke:#ff2d55;filter:drop-shadow(0 0 8px rgba(255,45,85,.8))}
+
+.bar{margin-top:12px;padding:0 4px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:22px;background:transparent;margin:0;cursor:pointer;--p:0%}
+input[type=range]::-webkit-slider-runnable-track{height:5px;border-radius:9px;background:linear-gradient(90deg,var(--violet) var(--p),rgba(255,255,255,.28) var(--p))}
+input[type=range]::-moz-range-track{height:5px;border-radius:9px;background:rgba(255,255,255,.28)}
+input[type=range]::-moz-range-progress{height:5px;border-radius:9px;background:var(--violet)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:#fff;margin-top:-3.5px;box-shadow:0 0 8px rgba(155,92,255,.9)}
+input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radius:50%;background:#fff}
+input[type=range]:focus-visible{outline:2px solid var(--cyan);outline-offset:2px;border-radius:6px}
+input[type=range]:disabled{opacity:.35;cursor:not-allowed}
+.times{display:flex;justify-content:space-between;font:800 13px var(--body);font-variant-numeric:tabular-nums;color:#e9defc;margin-top:-2px}
+.ctrl{display:flex;align-items:center;justify-content:center;gap:34px;margin:8px 0 6px}
+.ctrl button{border:0;background:transparent;color:#fff;cursor:pointer;padding:8px;border-radius:50%;line-height:0}
+.ctrl button:active{transform:scale(.92)}
+.ctrl button:focus-visible{outline:2px solid var(--cyan)}
+.ctrl svg{width:44px;height:44px;fill:#fff}
+.ctrl .play svg{width:58px;height:58px}
+.vol{display:flex;align-items:center;gap:12px;padding:0 10px}
+.vol svg{flex:none;width:22px;height:22px;fill:#fff}
+.vol input[type=range]::-webkit-slider-thumb{width:30px;height:30px;margin-top:-12.5px;box-shadow:0 2px 8px rgba(0,0,0,.5)}
+.vol input[type=range]::-moz-range-thumb{width:30px;height:30px}
+
+/* studio */
+.presets{display:flex;gap:6px;overflow-x:auto;margin-top:14px;padding-bottom:2px;scrollbar-width:none}
+.presets::-webkit-scrollbar{display:none}
+.presets button{flex:none;border:1.5px solid rgba(155,92,255,.55);background:rgba(155,92,255,.12);color:#e9defc;border-radius:12px;padding:9px 12px;font:900 12px var(--body);letter-spacing:.04em;cursor:pointer}
+.presets button[aria-pressed="true"]{background:linear-gradient(135deg,var(--pink),var(--violet));border-color:transparent;color:#fff;box-shadow:0 0 16px rgba(255,95,210,.5)}
+.studio{margin-top:10px;border:1.5px solid rgba(155,92,255,.45);border-radius:16px;background:rgba(155,92,255,.08)}
+.studio summary{cursor:pointer;padding:12px 14px;font:900 12.5px var(--body);letter-spacing:.08em;text-transform:uppercase;list-style:none;display:flex;justify-content:space-between}
+.studio summary::-webkit-details-marker{display:none}
+.studio summary::after{content:"＋";color:var(--pink)}
+.studio[open] summary::after{content:"－"}
+.studio[open] summary{border-bottom:1px solid var(--line)}
+.sbody{padding:8px 0 12px;display:flex;flex-direction:column;gap:2px}
+.srow{display:grid;grid-template-columns:74px minmax(0,1fr) 48px;align-items:center;gap:8px;padding:0 14px}
+.srow label{font:800 12px var(--body);color:var(--muted)}
+.srow output{font:800 12px var(--body);text-align:right;font-variant-numeric:tabular-nums}
+.togs{display:flex;gap:8px;padding:6px 14px 0;flex-wrap:wrap}
+.tog{flex:1;min-width:96px;border:1.5px solid rgba(155,92,255,.5);background:transparent;color:#e9defc;border-radius:12px;padding:9px 8px;font:900 12px var(--body);cursor:pointer}
+.tog[aria-pressed="true"]{background:var(--violet);border-color:var(--violet);color:#fff}
+.tog:disabled{opacity:.35;cursor:not-allowed}
+select{flex:1;min-width:96px;background:#1a0b3a;color:#fff;border:1.5px solid rgba(155,92,255,.5);border-radius:12px;padding:9px 8px;font:900 12px var(--body)}
+.hint{font:700 12px var(--body);color:#a995d6;margin:10px 4px 0;min-height:16px}
+
+/* tabs */
+.tabs{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{flex:none;background:rgba(10,5,32,.6);color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:8px 14px;font:900 12.5px var(--body);cursor:pointer}
+.tabs button[aria-selected="true"]{background:#fff;color:#1a0b2e;border-color:#fff}
+
+/* anime catalogue */
+.seg{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-bottom:8px}
+.seg::-webkit-scrollbar{display:none}
+.seg button{flex:none;border:1px solid var(--line);background:rgba(10,5,32,.6);color:#fff;border-radius:10px;padding:7px 12px;font:900 12px var(--body);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--violet);border-color:var(--violet)}
+.letters{display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;margin-bottom:10px;padding-bottom:2px}
+.letters::-webkit-scrollbar{display:none}
+.letters button{flex:none;min-width:32px;height:32px;border:1px solid var(--line);background:rgba(10,5,32,.6);color:#fff;border-radius:9px;font:900 12.5px var(--body);cursor:pointer;padding:0 8px}
+.letters button[aria-pressed="true"]{background:var(--pink);border-color:var(--pink)}
+.aform{margin-bottom:10px;display:block}
+.acount{font:700 12px var(--body);color:var(--muted);margin:0 2px 10px}
+.agrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.acard{position:relative;min-width:0}
+.aopen{border:0;background:none;color:#fff;cursor:pointer;text-align:left;padding:0;width:100%}
+.aopen img{width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:14px;display:block;border:2px solid rgba(155,92,255,.6);background:#241048}
+.aopen b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-top:5px;font:800 12px/1.2 var(--body)}
+.aopen i{display:block;font:700 11px var(--body);color:var(--muted);font-style:normal;margin-top:2px}
+.aopen:hover img,.aopen:focus-visible img{border-color:var(--pink);outline:0}
+.afav{position:absolute;top:6px;right:6px;width:30px;height:30px;border-radius:50%;border:0;background:rgba(10,5,32,.72);color:#fff;font-size:15px;line-height:30px;padding:0;cursor:pointer}
+.afav[aria-pressed="true"]{background:#ff2d55;box-shadow:0 0 10px rgba(255,45,85,.8)}
+.more{display:block;width:100%;margin-top:12px;border:1.5px solid rgba(155,92,255,.6);background:rgba(155,92,255,.14);color:#fff;border-radius:14px;padding:12px;font:900 13px var(--body);cursor:pointer}
+.more:disabled{opacity:.6;cursor:default}
+.mine{display:flex;flex-direction:column;gap:10px;margin-bottom:12px}
+.mine .go{padding:13px 18px;font-size:14px;border-radius:14px}
+.mine .row2{display:flex;gap:8px}
+
+/* song list */
+.lbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.lbar button{border:1px solid var(--line);background:rgba(10,5,32,.6);color:#fff;border-radius:10px;padding:7px 12px;font:900 12px var(--body);cursor:pointer}
+.lbar span{font:700 12px var(--body);color:var(--muted)}
+.list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.row{display:flex;align-items:center;gap:12px;padding:8px;border-radius:16px;background:rgba(10,5,32,.62);border:1px solid transparent;cursor:pointer;width:100%;color:#fff;text-align:left;font:inherit}
+.row:hover,.row:focus-visible{border-color:rgba(255,95,210,.7);outline:0}
+.row.on{border-color:var(--pink);background:rgba(255,95,210,.14)}
+.row img,.row .th{width:48px;height:48px;border-radius:10px;object-fit:cover;flex:none;background:linear-gradient(135deg,#3b1275,#a1359a)}
+.row .t{flex:1;min-width:0}
+.row b{display:block;font:900 14px var(--body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row i{display:block;font:700 12px var(--body);color:var(--muted);font-style:normal;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .eq{flex:none;display:flex;gap:2px;align-items:flex-end;height:16px;visibility:hidden}
+.row.on .eq{visibility:visible}
+.eq u{display:block;width:3px;background:var(--pink);border-radius:2px;height:4px;animation:eq .8s ease-in-out infinite}
+.eq u:nth-child(2){animation-delay:.2s}.eq u:nth-child(3){animation-delay:.4s}
+.paused .eq u{animation-play-state:paused}
+@keyframes eq{0%,100%{height:4px}50%{height:16px}}
+.empty{padding:22px 8px;text-align:center;color:var(--muted);font-weight:700;background:rgba(10,5,32,.6);border-radius:16px}
+
+/* blind test */
+.gbox{background:rgba(10,5,32,.72);border:1.5px solid rgba(155,92,255,.55);border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.gbox h3{margin:0;font:900 16px var(--display);font-style:italic}
+.gbox p{margin:0;color:var(--muted);font-weight:700;line-height:1.45}
+.ghead{display:flex;justify-content:space-between;font:900 13px var(--body);font-variant-numeric:tabular-nums}
+.gposter{width:46%;margin:0 auto;aspect-ratio:2/3;border-radius:16px;overflow:hidden;border:2px solid rgba(155,92,255,.7);background:#241048}
+.gposter img{width:100%;height:100%;object-fit:cover;display:block;filter:blur(26px) brightness(.8);transform:scale(1.2);transition:filter .5s,transform .5s}
+.gposter.rev img{filter:none;transform:none}
+.gmsg{text-align:center;font:800 13px var(--body);color:var(--muted);min-height:20px}
+.gchoices{display:grid;gap:8px}
+.gc{border:1.5px solid rgba(155,92,255,.55);background:rgba(155,92,255,.12);color:#fff;border-radius:14px;padding:12px;font:800 14px/1.2 var(--body);text-align:left;cursor:pointer}
+.gc.ok{background:rgba(62,224,143,.2);border-color:var(--ok)}
+.gc.no{background:rgba(255,77,109,.2);border-color:var(--no)}
+.gc:disabled{cursor:default}
+.grow{display:flex;gap:8px}
+.grow button{flex:1;border:1.5px solid rgba(155,92,255,.55);background:transparent;color:#fff;border-radius:14px;padding:11px;font:900 13px var(--body);cursor:pointer}
+.grow .primary{background:linear-gradient(135deg,var(--pink),var(--violet));border-color:transparent}
+
+.toast{position:fixed;left:50%;bottom:max(20px,env(safe-area-inset-bottom));transform:translate(-50%,30px);opacity:0;background:#fff;color:#1a0b2e;font:800 13px var(--body);padding:10px 16px;border-radius:999px;transition:.25s;z-index:20;max-width:90vw;text-align:center;pointer-events:none}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+footer{font:700 11.5px/1.5 var(--body);color:#a995d6;text-align:center;padding:4px 8px}
+button:focus-visible,select:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){.disc.spin,.eq u{animation:none}}
+</style>
+</head>
+<body>
+<canvas id="glass" aria-hidden="true"></canvas>
+<div id="artbg" aria-hidden="true"></div>
+<div class="shade" aria-hidden="true"></div>
+
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="logo">KAWAII PLAYER</div>
+      <div class="badge">Titres complets</div>
+    </div>
+    <form id="form" autocomplete="off">
+      <label class="field">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+        <input id="q" type="search" placeholder="Anime, artiste, opening…" enterkeyhint="search">
+      </label>
+      <button class="go" type="submit">OK</button>
+    </form>
+    <div class="chips" id="chips"></div>
+  </header>
+
+  <section class="player" id="player" aria-label="Lecteur">
+    <div class="cover"><div class="ph" id="ph">♪</div><img id="art" alt="" hidden></div>
+    <div class="meta">
+      <div class="txt">
+        <div class="artist" id="artist">Choisis un son</div>
+        <div class="title" id="title">Kawaii Player</div>
+        <div class="mode" id="mode">[ Normal ]</div>
+      </div>
+      <div class="disc" id="disc" aria-hidden="true"></div>
+      <button class="heart" id="heart" aria-pressed="false" aria-label="Ajouter aux favoris">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 3 4.8 6.6 4.8c2 0 3.6 1.1 5.4 3.2 1.8-2.1 3.4-3.2 5.4-3.2 3.6 0 5.7 3.6 4.2 7C19.5 16.4 12 21 12 21z"/></svg>
+      </button>
+    </div>
+    <div class="bar">
+      <input type="range" id="seek" min="0" max="1000" value="0" aria-label="Position">
+      <div class="times"><span id="cur">0:00</span><span id="rem">-0:00</span></div>
+    </div>
+    <div class="ctrl">
+      <button id="prev" aria-label="Précédent"><svg viewBox="0 0 24 24"><path d="M11 6v12l-8.5-6zM21 6v12l-8.5-6z"/></svg></button>
+      <button id="play" class="play" aria-label="Lecture"><svg id="playIcon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button>
+      <button id="next" aria-label="Suivant"><svg viewBox="0 0 24 24"><path d="M13 6v12l8.5-6zM3 6v12l8.5-6z"/></svg></button>
+    </div>
+    <div class="vol">
+      <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 4V5L7 9z"/></svg>
+      <input type="range" id="vol" min="0" max="100" value="80" aria-label="Volume">
+      <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 4V5L7 9zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/></svg>
+    </div>
+
+    <div class="presets" id="presets" role="group" aria-label="Effets prêts à l'emploi"></div>
+    <details class="studio" id="studio">
+      <summary>Studio · réglages en direct</summary>
+      <div class="sbody">
+        <div class="srow"><label for="fxS">Vitesse</label><input type="range" id="fxS" min="60" max="180" step="5" value="100"><output id="oS">×1.00</output></div>
+        <div class="srow"><label for="fxR">Reverb</label><input type="range" id="fxR" min="0" max="100" value="0"><output id="oR">0%</output></div>
+        <div class="srow"><label for="fxB">Basses</label><input type="range" id="fxB" min="0" max="100" value="0"><output id="oB">0%</output></div>
+        <div class="togs">
+          <button type="button" class="tog" id="fxE" aria-pressed="false">🎧 Audio 8D</button>
+          <button type="button" class="tog" id="fxL" aria-pressed="false">🔁 Boucle</button>
+          <select id="sleep" aria-label="Minuteur de veille">
+            <option value="0">😴 Minuteur : off</option>
+            <option value="10">Pause dans 10 min</option>
+            <option value="20">Pause dans 20 min</option>
+            <option value="30">Pause dans 30 min</option>
+            <option value="60">Pause dans 60 min</option>
+          </select>
+        </div>
+      </div>
+    </details>
+    <div class="hint" id="hint">Morceaux complets via l'API Audius. Mets des écouteurs pour l'audio 8D.</div>
+  </section>
+
+  <section>
+    <div class="tabs" role="tablist">
+      <button role="tab" id="tabAnime" aria-selected="true">Animes</button>
+      <button role="tab" id="tabSearch" aria-selected="false">Sons</button>
+      <button role="tab" id="tabFav" aria-selected="false">Favoris ♥</button>
+      <button role="tab" id="tabGame" aria-selected="false">Blind test 🎯</button>
+    </div>
+
+    <!-- ANIMES -->
+    <div id="animePanel">
+      <div class="seg" id="modeSeg">
+        <button type="button" id="modeCat" aria-pressed="true">Catalogue</button>
+        <button type="button" id="modeMine" aria-pressed="false">Mes animes ♥</button>
+      </div>
+
+      <div id="catBar">
+        <div class="seg" id="sortSeg">
+          <button type="button" data-sort="az" aria-pressed="true">A → Z</button>
+          <button type="button" data-sort="za" aria-pressed="false">Z → A</button>
+          <button type="button" data-sort="pop" aria-pressed="false">Populaires</button>
+          <button type="button" data-sort="top" aria-pressed="false">Mieux notés</button>
+        </div>
+        <div class="letters" id="letters" aria-label="Aller à la lettre"></div>
+        <form id="aform" class="aform" autocomplete="off">
+          <label class="field">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+            <input id="aq" type="search" placeholder="Chercher un anime (plus de 1000)…" enterkeyhint="search">
+          </label>
+        </form>
+      </div>
+
+      <div class="mine" id="mineBar" hidden>
+        <button type="button" class="go" id="mixBtn">▶ Lancer le mix de mes animes</button>
+        <form id="mform" class="row2" autocomplete="off">
+          <label class="field">
+            <input id="mu" type="text" placeholder="Pseudo MyAnimeList (favoris)" autocapitalize="off" spellcheck="false">
+          </label>
+          <button class="go" type="submit">Importer</button>
+        </form>
+      </div>
+
+      <div class="acount" id="acount">Chargement du catalogue…</div>
+      <div class="agrid" id="agrid"></div>
+      <button type="button" class="more" id="more">Charger plus</button>
+    </div>
+
+    <!-- SONS / FAVORIS -->
+    <div id="listPanel" hidden>
+      <div class="lbar"><button type="button" id="sortBtn">Tri : pertinence</button><span id="lcount"></span></div>
+      <ul class="list" id="list"></ul>
+    </div>
+
+    <!-- BLIND TEST -->
+    <div id="gamePanel" hidden>
+      <div class="gbox" id="gstart">
+        <h3>Devine l'anime</h3>
+        <p>10 manches. Tu entends 15 secondes d'un son et tu retrouves l'anime parmi 4 choix. Le score est gardé sur ton téléphone.</p>
+        <p id="gbest"></p>
+        <button type="button" class="go" id="gbtn" style="padding:13px;border-radius:14px;font-size:14px">Lancer le blind test</button>
+      </div>
+      <div class="gbox" id="gplay" hidden>
+        <div class="ghead"><span id="ground">Manche 1/10</span><span id="gscore">Score 0</span></div>
+        <div class="gposter" id="gposter"><img id="gimg" alt=""></div>
+        <div class="gmsg" id="gmsg">Écoute…</div>
+        <div class="gchoices" id="gchoices"></div>
+        <div class="grow"><button type="button" id="greplay">↺ Réécouter</button><button type="button" class="primary" id="gnext" hidden>Suivant →</button></div>
+      </div>
+      <div class="gbox" id="gres" hidden>
+        <h3 id="gresT">Terminé</h3>
+        <p id="gresP"></p>
+        <button type="button" class="go" id="gagain" style="padding:13px;border-radius:14px;font-size:14px">Rejouer</button>
+      </div>
+    </div>
+  </section>
+
+  <footer>Sons : Audius (titres complets, sans clé) · Animes : Jikan / MyAnimeList.</footer>
+</div>
+<div class="toast" id="toast" role="status"></div>
+<audio id="audio" preload="auto" playsinline></audio>
+
+<script>
+(function(){
+'use strict';
+var $=function(id){return document.getElementById(id)};
+var audio=$('audio');
+var state={queue:[],idx:-1,view:'anime',favs:[],afavs:[],term:'',results:[],sort:'rel',wantPlay:false};
+var fx={s:1,r:0,b:0,e:false,loop:false};
+var CHIPS=['Anime opening','Nightcore','Speed up','Slowed reverb','Lofi anime','Demon Slayer','Jujutsu Kaisen','Naruto','Vocaloid','J-pop','Ado','YOASOBI'];
+var PRESETS=[
+  {n:'Normal',s:1,r:0,b:0,e:false},
+  {n:'Nightcore',s:1.25,r:15,b:10,e:false},
+  {n:'Slowed + Reverb',s:.85,r:70,b:15,e:false},
+  {n:'8D',s:1,r:30,b:0,e:true},
+  {n:'Bass rave',s:1.05,r:10,b:85,e:false}
+];
+
+/* ---------- helpers ---------- */
+function lsGet(k,d){try{var v=JSON.parse(localStorage.getItem(k));return v==null?d:v}catch(e){return d}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+state.favs=lsGet('kp_favs',[]);state.afavs=lsGet('kp_afavs',[]);
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(m){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]})}
+function fmt(t){if(!isFinite(t)||t<0)t=0;var m=Math.floor(t/60),s=Math.floor(t%60);return m+':'+(s<10?'0':'')+s}
+var tt;function toast(m){var t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(tt);tt=setTimeout(function(){t.classList.remove('show')},2600)}
+function art(u,n){return u?u.replace(/\d+x\d+bb/,n+'x'+n+'bb'):''}
+function setRange(el){el.style.setProperty('--p',(el.value-el.min)/(el.max-el.min)*100+'%')}
+function shuffle(a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var x=a[i];a[i]=a[j];a[j]=x}return a}
+function clean(t){return String(t).split(':')[0].replace(/[()]/g,'').replace(/\b(season|saison)\s*\d+/gi,'').replace(/\s+/g,' ').trim()}
+
+/* ---------- stained glass background ---------- */
+function paintGlass(){
+  var c=$('glass'),w=c.width=innerWidth,h=c.height=innerHeight,g=c.getContext('2d');
+  var pal=['#ff7fd8','#ff5fd2','#b57bff','#8a5cff','#27d9ff','#6fe3ff','#ffb36b','#ffd1f0','#7d6bff'];
+  var s=Math.max(64,Math.round(Math.min(w,h)/7));
+  g.fillStyle='#14062b';g.fillRect(0,0,w,h);
+  var seed=7;function r(){seed=(seed*9301+49297)%233280;return seed/233280}
+  for(var y=-s;y<h+s;y+=s){for(var x=-s;x<w+s;x+=s){
+    var j=function(){return (r()-.5)*s*.35};
+    var a=[x+j(),y+j()],b=[x+s+j(),y+j()],d=[x+j(),y+s+j()],e=[x+s+j(),y+s+j()];
+    [[a,b,d],[b,e,d]].forEach(function(t){
+      g.beginPath();g.moveTo(t[0][0],t[0][1]);g.lineTo(t[1][0],t[1][1]);g.lineTo(t[2][0],t[2][1]);g.closePath();
+      g.globalAlpha=.55+r()*.4;g.fillStyle=pal[Math.floor(r()*pal.length)];g.fill();
+      g.globalAlpha=.5;g.strokeStyle='#ffffff';g.lineWidth=1.4;g.stroke();
+    });
+  }}
+  g.globalAlpha=1;
+}
+paintGlass();var rt;addEventListener('resize',function(){clearTimeout(rt);rt=setTimeout(paintGlass,200)});
+
+/* ---------- audio graph: basses -> (sec | reverb) -> pan 8D -> sortie ---------- */
+var ctx=null,dry,wet,bass,lfoDepth,corsOK=null;
+function makeIR(c){
+  var rate=c.sampleRate,len=Math.floor(rate*2.6),buf=c.createBuffer(2,len,rate);
+  for(var ch=0;ch<2;ch++){var d=buf.getChannelData(ch);for(var i=0;i<len;i++){d[i]=(Math.random()*2-1)*Math.pow(1-i/len,2.6)}}
+  return buf;
+}
+function initGraph(){
+  if(ctx||corsOK!==true)return;
+  try{
+    var AC=window.AudioContext||window.webkitAudioContext;ctx=new AC();
+    var src=ctx.createMediaElementSource(audio);
+    bass=ctx.createBiquadFilter();bass.type='lowshelf';bass.frequency.value=110;bass.gain.value=0;
+    var conv=ctx.createConvolver();conv.buffer=makeIR(ctx);
+    dry=ctx.createGain();wet=ctx.createGain();
+    var pan=ctx.createStereoPanner?ctx.createStereoPanner():ctx.createGain();
+    lfoDepth=ctx.createGain();lfoDepth.gain.value=0;
+    if(ctx.createStereoPanner){var osc=ctx.createOscillator();osc.frequency.value=.12;osc.connect(lfoDepth);lfoDepth.connect(pan.pan);osc.start()}
+    src.connect(bass);bass.connect(dry);dry.connect(pan);bass.connect(conv);conv.connect(wet);wet.connect(pan);pan.connect(ctx.destination);
+    applyFx();
+  }catch(e){ctx=null}
+}
+function wake(){if(ctx&&ctx.state==='suspended')ctx.resume()}
+function lockFx(off){['fxR','fxB','fxE'].forEach(function(id){$(id).disabled=off})}
+function modeText(){
+  var m=[];
+  if(fx.s>1.02)m.push('Speed up');else if(fx.s<.98)m.push('Slowed');
+  if(fx.r>10)m.push('Reverb');if(fx.b>15)m.push('Bass boost');if(fx.e)m.push('8D');
+  return '[ '+(m.length?m.join(' + '):'Normal')+' ]';
+}
+function applyFx(){
+  audio.preservesPitch=false;audio.mozPreservesPitch=false;audio.webkitPreservesPitch=false;
+  audio.playbackRate=fx.s;audio.loop=fx.loop;
+  if(ctx){var w=fx.r/100;dry.gain.value=1-w*.45;wet.gain.value=w*1.1;bass.gain.value=fx.b/100*14;lfoDepth.gain.value=fx.e?.9:0}
+  $('fxS').value=Math.round(fx.s*100);$('fxR').value=fx.r;$('fxB').value=fx.b;
+  ['fxS','fxR','fxB'].forEach(function(id){setRange($(id))});
+  $('oS').textContent='×'+fx.s.toFixed(2);$('oR').textContent=fx.r+'%';$('oB').textContent=fx.b+'%';
+  $('fxE').setAttribute('aria-pressed',fx.e);$('fxL').setAttribute('aria-pressed',fx.loop);
+  $('mode').textContent=modeText();
+  document.querySelectorAll('#presets button').forEach(function(b,i){
+    var p=PRESETS[i];b.setAttribute('aria-pressed',p.s===fx.s&&p.r===fx.r&&p.b===fx.b&&p.e===fx.e);
+  });
+}
+$('presets').innerHTML=PRESETS.map(function(p,i){return '<button type="button" data-i="'+i+'" aria-pressed="false">'+esc(p.n)+'</button>'}).join('');
+$('presets').addEventListener('click',function(e){
+  var b=e.target.closest('button');if(!b)return;var p=PRESETS[+b.dataset.i];
+  if(corsOK===false&&(p.r||p.b||p.e))toast('Sur ce navigateur seule la vitesse est disponible');
+  fx.s=p.s;fx.r=corsOK===false?0:p.r;fx.b=corsOK===false?0:p.b;fx.e=corsOK===false?false:p.e;wake();applyFx();
+});
+$('fxS').addEventListener('input',function(){fx.s=this.value/100;applyFx()});
+$('fxR').addEventListener('input',function(){fx.r=+this.value;wake();applyFx()});
+$('fxB').addEventListener('input',function(){fx.b=+this.value;wake();applyFx()});
+$('fxE').onclick=function(){fx.e=!fx.e;wake();applyFx()};
+$('fxL').onclick=function(){fx.loop=!fx.loop;applyFx()};
+
+/* minuteur de veille avec fondu */
+var sleepT,fadeT;
+function fadeOut(){
+  var v=audio.volume,i=0;clearInterval(fadeT);
+  fadeT=setInterval(function(){
+    i++;audio.volume=Math.max(0,v*(1-i/40));
+    if(i>=40){clearInterval(fadeT);audio.pause();audio.volume=v;$('sleep').value='0'}
+  },200);
+}
+$('sleep').onchange=function(){
+  clearTimeout(sleepT);var m=+this.value;if(!m){toast('Minuteur coupé');return}
+  toast('Fondu et pause dans '+m+' min');sleepT=setTimeout(fadeOut,m*60000);
+};
+
+/* ---------- player ---------- */
+function cur(){return state.queue[state.idx]}
+function isFav(t){return !!t&&state.favs.some(function(f){return f.id===t.id})}
+function show(t){
+  $('title').textContent=t.name;$('artist').textContent=t.artist;
+  var img=$('art');
+  if(t.cover){img.src=art(t.cover,600);img.hidden=false;$('ph').hidden=true;$('artbg').style.backgroundImage='url("'+art(t.cover,300)+'")'}
+  else{img.hidden=true;$('ph').hidden=false;$('artbg').style.backgroundImage='none'}
+  $('heart').setAttribute('aria-pressed',isFav(t));
+  if('mediaSession' in navigator){try{navigator.mediaSession.metadata=new MediaMetadata({title:t.name,artist:t.artist,artwork:t.cover?[{src:art(t.cover,512),sizes:'512x512',type:'image/jpeg'}]:[]})}catch(e){}}
+  if(state.view==='search'||state.view==='fav')paintList();
+}
+function load(i,autoplay){
+  if(i<0||i>=state.queue.length)return;
+  state.idx=i;var t=cur();show(t);
+  gstop();
+  audio.crossOrigin=corsOK===false?null:'anonymous';
+  audio.src=t.url;audio.load();applyFx();
+  if(autoplay){wake();audio.play().catch(function(){toast('Touche ▶ pour lancer')})}
+}
+function toggle(){
+  if(!cur()){if(state.queue.length)load(0,true);return}
+  gstop();wake();
+  if(audio.paused)audio.play().catch(function(){toast('Lecture bloquée, réessaie.')});else audio.pause();
+}
+function step(d){
+  if(!state.queue.length)return;
+  if(d<0&&audio.currentTime>3){audio.currentTime=0;return}
+  load((state.idx+d+state.queue.length)%state.queue.length,true);
+}
+audio.addEventListener('loadedmetadata',function(){
+  if(corsOK===null){corsOK=true;initGraph()}
+  applyFx();
+});
+audio.addEventListener('error',function(){
+  if(audio.crossOrigin==='anonymous'&&!ctx&&corsOK!==false){
+    corsOK=false;fx.r=0;fx.b=0;fx.e=false;lockFx(true);applyFx();
+    $('hint').textContent='Reverb, basses et 8D indisponibles sur ce navigateur (audio sans CORS). La vitesse marche.';
+    load(state.idx,state.wantPlay);return;
+  }
+  toast('Impossible de charger ce son.');
+});
+audio.addEventListener('play',function(){state.wantPlay=true;sync()});
+audio.addEventListener('pause',function(){state.wantPlay=false;sync()});
+audio.addEventListener('ended',function(){if(!fx.loop)step(1)});
+audio.addEventListener('timeupdate',function(){
+  var d=audio.duration||30,p=audio.currentTime/d*1000;
+  $('seek').value=p;setRange($('seek'));
+  $('cur').textContent=fmt(audio.currentTime);$('rem').textContent='-'+fmt((d-audio.currentTime)/(audio.playbackRate||1));
+});
+function sync(){
+  var playing=!audio.paused;
+  $('playIcon').innerHTML=playing?'<path d="M6 5h4v14H6zM14 5h4v14h-4z"/>':'<path d="M8 5v14l11-7z"/>';
+  $('play').setAttribute('aria-label',playing?'Pause':'Lecture');
+  $('disc').classList.toggle('spin',playing);
+  $('list').classList.toggle('paused',!playing);
+}
+$('seek').addEventListener('input',function(){var d=audio.duration;if(isFinite(d))audio.currentTime=this.value/1000*d;setRange(this)});
+$('vol').addEventListener('input',function(){audio.volume=this.value/100;setRange(this)});
+$('play').onclick=toggle;$('prev').onclick=function(){step(-1)};$('next').onclick=function(){step(1)};
+if('mediaSession' in navigator){
+  try{
+    navigator.mediaSession.setActionHandler('play',toggle);navigator.mediaSession.setActionHandler('pause',toggle);
+    navigator.mediaSession.setActionHandler('previoustrack',function(){step(-1)});
+    navigator.mediaSession.setActionHandler('nexttrack',function(){step(1)});
+  }catch(e){}
+}
+document.addEventListener('keydown',function(e){
+  var el=document.activeElement;
+  if(el&&/INPUT|TEXTAREA|SELECT/.test(el.tagName)&&el.type!=='range')return;
+  if(e.code==='Space'){e.preventDefault();toggle()}
+  if(e.code==='ArrowRight')step(1);if(e.code==='ArrowLeft')step(-1);
+});
+
+/* ---------- favoris sons ---------- */
+$('heart').onclick=function(){
+  var t=cur();if(!t)return;
+  if(isFav(t)){state.favs=state.favs.filter(function(f){return f.id!==t.id})}else{state.favs.unshift(t);toast('Ajouté aux favoris ♥')}
+  lsSet('kp_favs',state.favs);$('heart').setAttribute('aria-pressed',isFav(t));if(state.view==='fav')refreshList();
+};
+
+/* ---------- liste de sons (tri A-Z) ---------- */
+var shown=[];
+function ordered(arr){
+  var a=arr.slice();
+  if(state.sort==='az'||state.sort==='za'){
+    a.sort(function(x,y){return x.name.localeCompare(y.name,'fr',{sensitivity:'base',numeric:true})});
+    if(state.sort==='za')a.reverse();
+  }
+  return a;
+}
+function refreshList(){
+  var base=state.view==='fav'?state.favs:state.results;
+  shown=ordered(base);paintList();
+  $('lcount').textContent=shown.length+' son'+(shown.length>1?'s':'');
+  $('sortBtn').textContent='Tri : '+({rel:state.view==='fav'?'ajout':'pertinence',az:'A → Z',za:'Z → A'})[state.sort];
+}
+function paintList(){
+  var ul=$('list');
+  if(!shown.length){ul.innerHTML='<li class="empty">'+(state.view==='fav'?'Aucun favori pour l\'instant. Touche le ♥ sur un son.':'Aucun résultat.')+'</li>';return}
+  var curId=cur()&&cur().id;
+  ul.innerHTML=shown.map(function(t,i){
+    return '<li><button class="row'+(t.id===curId?' on':'')+'" data-i="'+i+'">'
+      +(t.cover?'<img src="'+esc(art(t.cover,120))+'" alt="" loading="lazy">':'<span class="th"></span>')
+      +'<span class="t"><b>'+esc(t.name)+'</b><i>'+esc(t.artist)+(t.album?' · '+esc(t.album):'')+'</i></span>'
+      +'<span class="eq"><u></u><u></u><u></u></span></button></li>';
+  }).join('');
+}
+$('list').addEventListener('click',function(e){
+  var b=e.target.closest('.row');if(!b)return;
+  var t=shown[+b.dataset.i];state.queue=shown.slice();load(state.queue.indexOf(t),true);
+});
+$('sortBtn').onclick=function(){state.sort=({rel:'az',az:'za',za:'rel'})[state.sort];refreshList()};
+
+function setView(v){
+  state.view=v;
+  ['Anime','Search','Fav','Game'].forEach(function(n){
+    var on=(n==='Anime'&&v==='anime')||(n==='Search'&&v==='search')||(n==='Fav'&&v==='fav')||(n==='Game'&&v==='game');
+    $('tab'+n).setAttribute('aria-selected',on);
+  });
+  $('animePanel').hidden=v!=='anime';
+  $('listPanel').hidden=!(v==='search'||v==='fav');
+  $('gamePanel').hidden=v!=='game';
+  if(v!=='game')gstop();
+  if(v==='search'||v==='fav')refreshList();
+}
+$('tabAnime').onclick=function(){setView('anime')};
+$('tabSearch').onclick=function(){setView('search')};
+$('tabFav').onclick=function(){setView('fav')};
+$('tabGame').onclick=function(){setView('game')};
+
+/* ---------- Audius (titres complets) + repli iTunes (extraits) ---------- */
+var APP='KAWAII_PLAYER';
+function audiusTracks(term,limit){
+  return fetch('https://api.audius.co/v1/tracks/search?limit='+(limit||40)+'&app_name='+APP+'&query='+encodeURIComponent(term))
+    .then(function(r){if(!r.ok)throw new Error(r.status);return r.json()}).then(function(j){
+      return (j.data||[]).filter(function(x){return x&&x.id&&x.is_streamable!==false}).map(function(x){
+        return{id:'a'+x.id,name:x.title,artist:(x.user&&x.user.name)||'Audius',album:x.genre||'',
+          cover:x.artwork&&(x.artwork['480x480']||x.artwork['150x150']),
+          url:'https://api.audius.co/v1/tracks/'+x.id+'/stream?app_name='+APP};
+      });
+    });
+}
+function finish(res,autoLoad,note){
+  state.results=res;
+  if(state.view==='search')refreshList();
+  if(autoLoad&&res.length&&!cur()){state.queue=res.slice();load(0,false)}
+  if(note)toast(note);
+}
+function fail(){
+  state.results=[];if(state.view==='search'){$('list').innerHTML='<li class="empty">Impossible de joindre les APIs musicales. Vérifie ta connexion, ou ouvre ce fichier directement dans ton navigateur.</li>'}
+}
+function itunes(term,autoLoad){
+  return fetch('https://itunes.apple.com/search?media=music&entity=song&limit=30&term='+encodeURIComponent(term))
+    .then(function(r){if(!r.ok)throw new Error(r.status);return r.json()}).then(function(j){
+      var seen={};
+      var res=(j.results||[]).filter(function(x){return x.previewUrl&&!seen[x.trackId]&&(seen[x.trackId]=1)}).map(function(x){
+        return{id:'i'+x.trackId,name:x.trackName,artist:x.artistName,album:x.collectionName,cover:x.artworkUrl100,url:x.previewUrl};
+      });
+      finish(res,autoLoad,res.length?'Pas de titre complet pour ça : extraits de 30 s':null);
+    });
+}
+function search(term,autoLoad){
+  term=(term||'').trim();if(!term)return;
+  state.term=term;$('q').value=term;
+  if(!autoLoad)setView('search');
+  if(state.view==='search')$('list').innerHTML='<li class="empty">Recherche de « '+esc(term)+' »…</li>';
+  audiusTracks(term,40).catch(function(){return []}).then(function(res){
+    if(res.length){finish(res,autoLoad);return}
+    return itunes(term,autoLoad);
+  }).catch(fail);
+}
+$('form').addEventListener('submit',function(e){e.preventDefault();search($('q').value);$('q').blur()});
+$('chips').innerHTML=CHIPS.map(function(c){return '<button type="button" class="chip">'+esc(c)+'</button>'}).join('');
+$('chips').addEventListener('click',function(e){var b=e.target.closest('.chip');if(b)search(b.textContent)});
+
+/* ---------- Jikan : catalogue MyAnimeList ---------- */
+var JK='https://api.jikan.moe/v4';
+var SORTN={az:'A → Z',za:'Z → A',pop:'Populaires',top:'Mieux notés'};
+var A={page:1,q:'',sort:'az',letter:'',mode:'cat',loading:false,hasNext:true,failed:false,tok:0};
+function jget(url,tries){
+  return fetch(url).then(function(r){
+    if(r.status===429&&(tries||0)<3)return new Promise(function(ok){setTimeout(ok,1200)}).then(function(){return jget(url,(tries||0)+1)});
+    if(!r.ok){var e=new Error(r.status);e.status=r.status;throw e}
+    return r.json();
+  });
+}
+function norm(a){return{id:a.mal_id,t:a.title_english||a.title,img:a.images.jpg.image_url,score:a.score}}
+function isAF(id){return state.afavs.some(function(f){return f.id===id})}
+function card(a){
+  return '<div class="acard"><button class="aopen" data-t="'+esc(a.t)+'"><img src="'+esc(a.img)+'" alt="" loading="lazy">'
+    +'<b>'+esc(a.t)+'</b>'+(a.score?'<i>★ '+a.score+'</i>':'')+'</button>'
+    +'<button class="afav" aria-pressed="'+isAF(a.id)+'" aria-label="Ajouter à mes animes" data-id="'+a.id+'" data-t="'+esc(a.t)+'" data-img="'+esc(a.img)+'">♥</button></div>';
+}
+function aurl(){
+  var base,o={az:'&order_by=title&sort=asc',za:'&order_by=title&sort=desc',pop:'&order_by=popularity&sort=asc',top:'&order_by=score&sort=desc'}[A.sort];
+  if(A.sort==='top'&&!A.q&&!A.letter)return JK+'/top/anime?sfw=true&limit=24&page='+A.page;
+  base=JK+'/anime?sfw=true&limit=24&page='+A.page+o;
+  if(A.q)base+='&q='+encodeURIComponent(A.q);
+  if(A.letter)base+='&letter='+A.letter;
+  return base;
+}
+function loadAnimes(reset){
+  if(A.mode!=='cat')return;
+  if(A.loading&&!reset)return;
+  if(reset){A.tok++;A.page=1;A.hasNext=true;A.failed=false;$('agrid').innerHTML='';$('acount').textContent='Chargement…'}
+  if(!A.hasNext)return;
+  var tok=A.tok;A.loading=true;$('more').hidden=false;$('more').disabled=true;$('more').textContent='Chargement…';
+  jget(aurl()).then(function(j){
+    if(tok!==A.tok)return;
+    var list=(j.data||[]).filter(function(a){return a.images&&a.images.jpg}).map(norm);
+    $('agrid').insertAdjacentHTML('beforeend',list.map(card).join(''));
+    var p=j.pagination||{};A.hasNext=!!p.has_next_page;A.page++;A.failed=false;
+    var total=p.items&&p.items.total;
+    var parts=[];if(total!=null)parts.push(total.toLocaleString('fr-FR')+' animes');parts.push(SORTN[A.sort]);
+    if(A.letter)parts.push('lettre '+A.letter);if(A.q)parts.push('« '+A.q+' »');
+    $('acount').textContent=parts.join(' · ');
+    if(!list.length&&A.page===2)$('acount').textContent='Aucun anime trouvé';
+  }).catch(function(){
+    if(tok!==A.tok)return;
+    A.failed=true;
+    if(!$('agrid').children.length)$('acount').textContent='Catalogue indisponible (Jikan). Touche « Réessayer ».';
+  }).then(function(){
+    if(tok!==A.tok)return;
+    A.loading=false;$('more').disabled=false;
+    $('more').hidden=!A.hasNext&&!A.failed;
+    $('more').textContent=A.failed?'Réessayer':'Charger plus';
+  });
+}
+$('more').onclick=function(){loadAnimes(false)};
+if('IntersectionObserver' in window){
+  new IntersectionObserver(function(es){
+    if(es[0].isIntersecting&&A.page>1&&!A.failed&&state.view==='anime'&&A.mode==='cat')loadAnimes(false);
+  },{rootMargin:'500px'}).observe($('more'));
+}
+/* lettres A-Z */
+$('letters').innerHTML=['<button type="button" data-l="" aria-pressed="true">Tous</button>'].concat('ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(function(l){return '<button type="button" data-l="'+l+'" aria-pressed="false">'+l+'</button>'})).join('');
+$('letters').addEventListener('click',function(e){
+  var b=e.target.closest('button');if(!b)return;
+  A.letter=b.dataset.l;
+  document.querySelectorAll('#letters button').forEach(function(x){x.setAttribute('aria-pressed',x===b)});
+  loadAnimes(true);window.scrollTo({top:$('animePanel').getBoundingClientRect().top+scrollY-70,behavior:'smooth'});
+});
+$('sortSeg').addEventListener('click',function(e){
+  var b=e.target.closest('button');if(!b)return;
+  A.sort=b.dataset.sort;
+  document.querySelectorAll('#sortSeg button').forEach(function(x){x.setAttribute('aria-pressed',x===b)});
+  loadAnimes(true);
+});
+var at;
+$('aq').addEventListener('input',function(){
+  var v=this.value.trim();clearTimeout(at);
+  at=setTimeout(function(){if(v!==A.q){A.q=v;loadAnimes(true)}},500);
+});
+$('aform').addEventListener('submit',function(e){e.preventDefault();clearTimeout(at);A.q=$('aq').value.trim();loadAnimes(true);$('aq').blur()});
+
+/* mes animes + mix */
+function renderMine(){
+  $('agrid').innerHTML=state.afavs.map(card).join('');
+  $('acount').textContent=state.afavs.length?state.afavs.length+' anime'+(state.afavs.length>1?'s':'')+' dans ton mix':'Touche le ♥ sur des animes, ou importe tes favoris MyAnimeList.';
+  $('more').hidden=true;
+}
+function setMode(m){
+  A.mode=m;
+  $('modeCat').setAttribute('aria-pressed',m==='cat');$('modeMine').setAttribute('aria-pressed',m==='mine');
+  $('catBar').hidden=m!=='cat';$('mineBar').hidden=m!=='mine';
+  if(m==='mine'){A.tok++;renderMine()}else{loadAnimes(true)}
+}
+$('modeCat').onclick=function(){setMode('cat')};
+$('modeMine').onclick=function(){setMode('mine')};
+$('agrid').addEventListener('click',function(e){
+  var f=e.target.closest('.afav');
+  if(f){
+    var id=+f.dataset.id;
+    if(isAF(id)){state.afavs=state.afavs.filter(function(x){return x.id!==id})}
+    else{state.afavs.unshift({id:id,t:f.dataset.t,img:f.dataset.img});toast('Ajouté à tes animes ♥')}
+    lsSet('kp_afavs',state.afavs);
+    if(A.mode==='mine')renderMine();else f.setAttribute('aria-pressed',isAF(id));
+    return;
+  }
+  var b=e.target.closest('.aopen');if(!b)return;
+  var term=clean(b.dataset.t);toast('Sons de « '+term+' »');search(term);
+});
+$('mixBtn').onclick=function(){
+  if(!state.afavs.length){toast('Ajoute d\'abord des animes avec ♥');return}
+  var pick=shuffle(state.afavs).slice(0,8);toast('Création du mix…');
+  Promise.all(pick.map(function(a){return audiusTracks(clean(a.t),6).catch(function(){return []})})).then(function(arrs){
+    var seen={},all=[];arrs.forEach(function(arr){arr.forEach(function(t){if(!seen[t.id]){seen[t.id]=1;all.push(t)}})});
+    all=shuffle(all);
+    if(!all.length){toast('Aucun son trouvé pour ces animes');return}
+    state.results=all;state.queue=all.slice();setView('search');load(0,true);toast('Mix de '+all.length+' sons ▶');
+  });
+};
+$('mform').addEventListener('submit',function(e){
+  e.preventDefault();var u=$('mu').value.trim();if(!u)return;
+  toast('Import de '+u+'…');
+  jget(JK+'/users/'+encodeURIComponent(u)+'/favorites').then(function(j){
+    var list=((j.data&&j.data.anime)||[]),n=0;
+    list.forEach(function(a){
+      var id=a.mal_id;
+      if(!isAF(id)&&a.images&&a.images.jpg){state.afavs.push({id:id,t:a.title,img:a.images.jpg.image_url});n++}
+    });
+    lsSet('kp_afavs',state.afavs);renderMine();
+    toast(n?n+' anime'+(n>1?'s':'')+' importé'+(n>1?'s':''):(list.length?'Déjà tout importé':'Aucun favori anime sur ce profil'));
+  }).catch(function(err){toast(err.status===404?'Profil introuvable':'Import impossible pour le moment')});
+});
+
+/* ---------- blind test ---------- */
+var G={pool:[],round:0,score:0,answer:null,track:null,open:false,stopAt:0,token:0};
+var gaudio=new Audio();gaudio.preload='auto';
+gaudio.addEventListener('timeupdate',function(){if(G.stopAt&&gaudio.currentTime>=G.stopAt){gaudio.pause();G.stopAt=0}});
+function gstop(){try{gaudio.pause()}catch(e){}}
+function gmsg(t){$('gmsg').textContent=t}
+function gbest(){var b=lsGet('kp_best',null);$('gbest').textContent=b==null?'Pas encore de meilleur score.':'Meilleur score : '+b+'/10';}
+function ensurePool(){
+  if(G.pool.length>=20)return Promise.resolve();
+  var out=[];
+  return jget(JK+'/top/anime?sfw=true&limit=25&page=1').then(function(j){
+    out=out.concat((j.data||[]).filter(function(a){return a.images&&a.images.jpg}).map(norm));
+    return jget(JK+'/top/anime?sfw=true&limit=25&page=2');
+  }).then(function(j){
+    out=out.concat((j.data||[]).filter(function(a){return a.images&&a.images.jpg}).map(norm));
+    G.pool=out;
+  });
+}
+function gameStart(){
+  audio.pause();G.round=0;G.score=0;
+  $('gstart').hidden=true;$('gres').hidden=true;$('gplay').hidden=false;
+  gmsg('Chargement des animes…');$('gchoices').innerHTML='';$('gnext').hidden=true;
+  ensurePool().then(nextRound).catch(function(){gmsg('Catalogue indisponible. Réessaie dans un instant.');$('gnext').hidden=true})
+}
+function nextRound(){
+  if(G.round>=10)return endGame();
+  G.round++;G.open=false;G.token++;
+  $('ground').textContent='Manche '+G.round+'/10';$('gscore').textContent='Score '+G.score;
+  $('gposter').classList.remove('rev');$('gchoices').innerHTML='';$('gnext').hidden=true;gmsg('Recherche d\'un son…');
+  tryPick(0,G.token);
+}
+function tryPick(n,tok){
+  if(tok!==G.token)return;
+  if(n>6){gmsg('Pas assez de sons trouvés. Reviens plus tard.');return}
+  var a=G.pool[Math.floor(Math.random()*G.pool.length)];
+  audiusTracks(clean(a.t),12).then(function(tr){
+    if(tok!==G.token)return;
+    if(!tr.length)return tryPick(n+1,tok);
+    var t=tr[Math.floor(Math.random()*tr.length)];
+    G.answer=a;G.track=t;
+    var others=shuffle(G.pool.filter(function(x){return x.id!==a.id})).slice(0,3);
+    var ch=shuffle(others.concat([a]));
+    $('gimg').src=a.img;
+    $('gchoices').innerHTML=ch.map(function(c){return '<button type="button" class="gc" data-id="'+c.id+'">'+esc(c.t)+'</button>'}).join('');
+    G.open=true;
+    gaudio.onloadedmetadata=function(){
+      var d=gaudio.duration,s=(isFinite(d)&&d>45)?d*(.15+Math.random()*.45):0;
+      gaudio.currentTime=s;G.stopAt=s+15;G.start=s;
+      gaudio.play().then(function(){gmsg('Quel est cet anime ?')}).catch(function(){gmsg('Touche « Réécouter » pour lancer le son')});
+    };
+    gaudio.src=t.url;gaudio.load();
+  }).catch(function(){tryPick(n+1,tok)});
+}
+$('gchoices').addEventListener('click',function(e){
+  var b=e.target.closest('.gc');if(!b||!G.open)return;
+  G.open=false;gaudio.pause();G.stopAt=0;
+  var ok=+b.dataset.id===G.answer.id;
+  if(ok)G.score++;
+  document.querySelectorAll('#gchoices .gc').forEach(function(x){
+    x.disabled=true;
+    if(+x.dataset.id===G.answer.id)x.classList.add('ok');else if(x===b)x.classList.add('no');
+  });
+  $('gposter').classList.add('rev');
+  $('gscore').textContent='Score '+G.score;
+  gmsg((ok?'Bien joué ! ':'Raté. ')+G.track.name+' · '+G.track.artist);
+  $('gnext').hidden=false;$('gnext').textContent=G.round>=10?'Voir le score':'Suivant →';
+});
+$('greplay').onclick=function(){
+  if(!G.track)return;
+  gaudio.currentTime=G.start||0;G.stopAt=(G.start||0)+15;gaudio.play().catch(function(){});
+};
+$('gnext').onclick=nextRound;
+function endGame(){
+  gaudio.pause();$('gplay').hidden=true;$('gres').hidden=false;
+  var b=lsGet('kp_best',null),best=b==null||G.score>b;
+  if(best)lsSet('kp_best',G.score);
+  $('gresT').textContent=G.score+'/10'+(best?' · nouveau record !':'');
+  $('gresP').textContent=G.score>=8?'Otaku confirmé.':G.score>=5?'Pas mal, tu connais tes classiques.':'Il est temps de regarder plus d\'animes.';
+  gbest();
+}
+$('gbtn').onclick=gameStart;
+$('gagain').onclick=function(){$('gres').hidden=true;gameStart()};
+gbest();
+
+/* ---------- démarrage ---------- */
+audio.volume=.8;setRange($('vol'));setRange($('seek'));applyFx();sync();
+search('Anime opening',true);loadAnimes(true);
+})();
+</script>
+</body>
+</html>
