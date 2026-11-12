@@ -1,0 +1,829 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#14062b">
+<title>Kawaii Player</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&family=Unbounded:wght@800;900&display=swap" rel="stylesheet">
+<style>
+/* Layout: 2 screens (Animes A-Z -> fiche d'un anime avec ses openings/endings, Favoris) + bottom nav + mini player. Mini player opens the neon full player from the TikTok screenshot. */
+:root{
+  --ink:#0b0618;
+  --card:#0a0520;
+  --pink:#ff5fd2;
+  --violet:#9b5cff;
+  --cyan:#27d9ff;
+  --text:#fff;
+  --muted:#cdbdf2;
+  --line:rgba(255,255,255,.14);
+  --nav:62px;
+  --display:'Unbounded','Arial Black',system-ui,sans-serif;
+  --body:'Nunito',system-ui,-apple-system,'Segoe UI',sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100%}
+[hidden]{display:none!important}
+button{font-family:inherit;color:inherit}
+body{
+  background:var(--ink);color:var(--text);font-family:var(--body);font-size:15px;
+  padding-top:max(14px,env(safe-area-inset-top));
+  padding-bottom:calc(var(--nav) + 92px + env(safe-area-inset-bottom));
+  padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right));
+  overflow-x:hidden;
+}
+#glass{position:fixed;inset:0;width:100%;height:100%;z-index:-3;display:block}
+#artbg{position:fixed;inset:-40px;z-index:-2;background-size:cover;background-position:center;filter:blur(46px) saturate(1);opacity:.35}
+.shade{position:fixed;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(20,6,43,.35),rgba(11,6,24,.9) 70%)}
+.wrap{max-width:480px;margin:0 auto;min-width:0}
+.logo{font-family:var(--display);font-weight:900;font-size:20px;font-style:italic;margin:2px 0 14px;
+  color:#fff}
+
+.field{display:flex;align-items:center;gap:8px;background:rgba(10,5,32,.75);border:1px solid rgba(255,255,255,.22);border-radius:999px;padding:0 16px;margin-bottom:12px}
+.field svg{flex:none;opacity:.85}
+.field input{flex:1;min-width:0;background:transparent;border:0;outline:0;color:#fff;font:700 15px var(--body);padding:13px 0}
+.field input::placeholder{color:#a995d6}
+.count{font:700 12px var(--body);color:var(--muted);margin:0 2px 10px}
+
+/* anime grid */
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 10px;align-items:start}
+.acard{border:0;background:none;text-align:center;padding:0;cursor:pointer;min-width:0;display:flex;flex-direction:column;align-items:stretch}
+.acard img,.acard .ph{width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:14px;display:block;border:1px solid rgba(255,255,255,.18);background:#2a1450}
+.acard:active img,.acard:focus-visible img{border-color:var(--pink);outline:0}
+.acard b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-top:6px;font:800 12px/1.25 var(--body);min-height:2.5em;text-align:center;overflow-wrap:anywhere;word-break:break-word}
+.more{display:block;width:100%;margin-top:14px;border:1.5px solid rgba(155,92,255,.6);background:rgba(155,92,255,.14);border-radius:14px;padding:12px;font:900 13px var(--body);cursor:pointer}
+.more:disabled{opacity:.6}
+.acard small{display:block;margin-top:2px;font:700 11px var(--body);color:var(--muted);text-align:center}
+.msg{padding:22px 14px;text-align:center;color:var(--muted);font-weight:700;background:rgba(10,5,32,.65);border-radius:16px;line-height:1.5}
+.dout{margin-top:12px;font:700 13px/1.8 var(--body);text-align:left}
+.msg button{margin:12px 4px 0;border:0;border-radius:999px;padding:10px 20px;font:900 13px var(--body);color:#fff;cursor:pointer;background:var(--violet)}
+
+.seg{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-bottom:12px}
+.seg::-webkit-scrollbar{display:none}
+.seg button{flex:none;border:1px solid var(--line);background:rgba(10,5,32,.6);border-radius:999px;padding:7px 14px;font:900 12.5px var(--body);cursor:pointer}
+.seg button[aria-pressed="true"]{background:#fff;color:#1a0b2e;border-color:#fff}
+.sk .ph{animation:pulse 1.2s ease-in-out infinite}
+.sk b{visibility:hidden}
+@keyframes pulse{50%{opacity:.45}}
+/* fiche anime */
+.back{border:0;background:rgba(10,5,32,.75);border:1px solid var(--line);border-radius:999px;padding:8px 14px;font:900 13px var(--body);cursor:pointer;margin-bottom:14px}
+.dhead{display:flex;gap:14px;align-items:flex-end;margin-bottom:14px}
+.dhead img,.dhead .ph{width:104px;aspect-ratio:2/3;object-fit:cover;border-radius:14px;border:1px solid rgba(255,255,255,.18);flex:none;background:#2a1450}
+.dhead .t{min-width:0}
+.dhead h1{margin:0 0 4px;font:900 20px/1.2 var(--body);overflow-wrap:anywhere}
+.dhead p{margin:0 0 12px;color:var(--muted);font:700 13px var(--body)}
+.playall{border:0;border-radius:999px;padding:11px 18px;font:900 13px var(--body);color:#fff;cursor:pointer;background:var(--violet)}
+
+/* lignes de sons */
+.list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.row{display:flex;align-items:center;gap:4px;border-radius:16px;background:rgba(10,5,32,.65);border:1px solid transparent}
+.row.on{border-color:var(--pink);background:rgba(255,95,210,.14)}
+.rmain{flex:1;min-width:0;display:flex;align-items:center;gap:12px;border:0;background:none;padding:8px 0 8px 8px;text-align:left;cursor:pointer}
+.rmain img,.rmain .th{width:48px;height:48px;border-radius:10px;object-fit:cover;flex:none;background:linear-gradient(135deg,#3b1275,#a1359a)}
+.rmain .tag{flex:none;min-width:44px;height:48px;border-radius:10px;display:grid;place-items:center;font:900 13px var(--body);background:rgba(155,92,255,.25);color:#e9defc}
+.rmain .t{flex:1;min-width:0}
+.rmain b{display:block;font:900 14px var(--body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rmain i{display:block;font:700 12px var(--body);color:var(--muted);font-style:normal;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rheart{flex:none;border:0;background:none;padding:12px;cursor:pointer;line-height:0}
+.rheart svg{width:22px;height:22px;fill:none;stroke:#fff;stroke-width:2;stroke-linejoin:round}
+.rheart[aria-pressed="true"] svg{fill:#ff2d55;stroke:#ff2d55}
+
+.row.off{opacity:.45}
+.stt{flex:none;font:800 11px var(--body);color:var(--muted);padding:0 4px}
+.hd{padding:16px 2px 6px;font:900 12px var(--body);letter-spacing:.1em;text-transform:uppercase;color:#fff}
+.hd:first-child{padding-top:2px}
+#seasons{margin-bottom:12px}
+/* playlists */
+.plhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.plhead h2{margin:0;font:900 18px var(--body)}
+.newbtn,.go2{border:0;border-radius:999px;padding:9px 16px;font:900 13px var(--body);color:#fff;cursor:pointer;background:var(--violet)}
+.inline{display:flex;gap:8px;margin-bottom:12px}
+.inline .field{flex:1;min-width:0;margin-bottom:0}
+.pltitle{margin:0 0 4px;font:900 24px/1.2 var(--body);overflow-wrap:anywhere}
+.plmeta{margin:0 0 12px;color:var(--muted);font:700 13px var(--body)}
+.plactions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.ghost{border:1px solid var(--line);background:rgba(10,5,32,.7);border-radius:999px;padding:11px 16px;font:900 13px var(--body);cursor:pointer}
+.rplay svg{fill:#fff}
+#sheet{position:fixed;inset:0;z-index:50;display:flex;align-items:flex-end;justify-content:center}
+.sheetbg{position:absolute;inset:0;background:rgba(0,0,0,.62)}
+.sheetbox{position:relative;width:100%;max-width:480px;max-height:78%;overflow-y:auto;background:var(--card);border-radius:26px 26px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom));border:1px solid rgba(255,255,255,.14);border-bottom:0}
+.sheethead{display:flex;align-items:center;justify-content:space-between}
+.sheethead b{font:900 17px var(--body)}
+.sheethead button{border:0;background:rgba(255,255,255,.1);width:34px;height:34px;border-radius:50%;font-size:15px;cursor:pointer}
+.sheetsong{color:var(--muted);font:700 13px var(--body);margin:4px 0 12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.plrow{width:100%;display:flex;align-items:center;gap:10px;border:1.5px solid rgba(155,92,255,.45);background:rgba(155,92,255,.1);border-radius:14px;padding:13px 14px;text-align:left;cursor:pointer}
+.plrow .plname{flex:1;min-width:0;font:900 14px var(--body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.plrow .plcount{font:700 12px var(--body);color:var(--muted)}
+.plrow .chk{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font:900 13px var(--body);border:1.5px solid rgba(255,255,255,.35);color:transparent}
+.plrow[aria-pressed="true"]{border-color:var(--pink);background:rgba(255,95,210,.16)}
+.plrow[aria-pressed="true"] .chk{background:var(--pink);border-color:var(--pink);color:#fff}
+.newform{display:flex;gap:8px;margin-top:14px}
+.newform input{flex:1;min-width:0;background:rgba(10,5,32,.8);border:1.5px solid rgba(155,92,255,.7);border-radius:999px;color:#fff;font:700 15px var(--body);padding:12px 16px;outline:0}
+
+/* nav + mini player */
+nav{position:fixed;left:0;right:0;bottom:0;z-index:10;height:calc(var(--nav) + env(safe-area-inset-bottom));padding:0 max(8px,env(safe-area-inset-left)) env(safe-area-inset-bottom) max(8px,env(safe-area-inset-right));
+  display:flex;background:rgba(11,6,24,.94);border-top:1px solid var(--line);backdrop-filter:blur(14px)}
+nav button{flex:1;border:0;background:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font:800 11px var(--body);color:#9d8cc8;cursor:pointer}
+nav svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+nav button[aria-current="page"]{color:#fff}
+nav button[aria-current="page"] svg{stroke:var(--pink)}
+#mini{position:fixed;left:max(10px,env(safe-area-inset-left));right:max(10px,env(safe-area-inset-right));bottom:calc(var(--nav) + env(safe-area-inset-bottom) + 8px);z-index:10;max-width:460px;margin:0 auto;
+  background:var(--card);border-radius:18px;border:1px solid rgba(255,255,255,.14);display:flex;align-items:center;overflow:hidden}
+#mini .open{flex:1;min-width:0;display:flex;align-items:center;gap:12px;border:0;background:none;padding:9px 0 9px 9px;text-align:left;cursor:pointer}
+#mini img,#mini .th{width:44px;height:44px;border-radius:10px;object-fit:cover;flex:none;background:linear-gradient(135deg,#3b1275,#a1359a)}
+#mini .t{min-width:0}
+#mini b{display:block;font:900 14px var(--body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#mini i{display:block;font:700 12px var(--body);color:var(--muted);font-style:normal;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#mini .mp{flex:none;border:0;background:none;padding:10px 14px;cursor:pointer;line-height:0}
+#mini .mp svg{width:30px;height:30px;fill:#fff}
+#mini .prog{position:absolute;left:0;bottom:0;height:3px;width:0;background:var(--pink)}
+
+/* lecteur plein écran (style capture) */
+#full{position:fixed;inset:0;z-index:30;background:rgba(11,6,24,.62);backdrop-filter:blur(8px);overflow-y:auto;transform:translateY(102%);transition:transform .3s ease;
+  padding:max(12px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+#full.open{transform:none}
+.fwrap{max-width:460px;margin:0 auto}
+.ftop{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.ftop button{border:0;background:rgba(10,5,32,.7);width:40px;height:40px;border-radius:50%;cursor:pointer;line-height:0}
+.ftop svg{width:22px;height:22px;stroke:#fff;fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.ftop span{font:900 12px var(--body);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.player{background:var(--card);border-radius:26px;padding:14px 14px 18px;border:1px solid rgba(255,255,255,.14)}
+.cover{position:relative;aspect-ratio:1/1;width:100%;border-radius:22px;overflow:hidden;background:#241048}
+.cover img{width:100%;height:100%;object-fit:cover;object-position:center top;display:block}
+.cover .ph{position:absolute;inset:0;display:grid;place-items:center;font:900 44px var(--display);color:rgba(255,255,255,.35);background:linear-gradient(135deg,#3b1275,#a1359a)}
+.cover::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 55%,rgba(10,5,32,.85));pointer-events:none}
+.meta{display:flex;align-items:flex-end;gap:12px;padding:12px 4px 0}
+.meta .txt{flex:1;min-width:0}
+.artist{font:800 13px var(--body);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.title{font:900 21px/1.15 var(--body);margin:2px 0 3px;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.mode{font:800 13px var(--body);letter-spacing:.04em;color:#b79cff;text-transform:uppercase}
+.addpl{flex:none;align-self:center;width:44px;height:44px;border-radius:50%;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;cursor:pointer;display:grid;place-items:center;padding:0}
+.addpl svg{width:24px;height:24px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.addpl:active{background:rgba(255,255,255,.18)}
+.bar{margin-top:12px;padding:0 4px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:22px;background:transparent;margin:0;cursor:pointer;--p:0%}
+input[type=range]::-webkit-slider-runnable-track{height:5px;border-radius:9px;background:linear-gradient(90deg,var(--violet) var(--p),rgba(255,255,255,.28) var(--p))}
+input[type=range]::-moz-range-track{height:5px;border-radius:9px;background:rgba(255,255,255,.28)}
+input[type=range]::-moz-range-progress{height:5px;border-radius:9px;background:var(--violet)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:#fff;margin-top:-3.5px}
+input[type=range]::-moz-range-thumb{width:12px;height:12px;border:0;border-radius:50%;background:#fff}
+.times{display:flex;justify-content:space-between;font:800 13px var(--body);font-variant-numeric:tabular-nums;color:#e9defc;margin-top:-2px}
+.ctrl{display:flex;align-items:center;justify-content:center;gap:30px;margin:8px 0 6px}
+.ctrl button{border:0;background:transparent;cursor:pointer;padding:8px;border-radius:50%;line-height:0}
+.ctrl button:active{transform:scale(.92)}
+.ctrl svg{width:42px;height:42px;fill:#fff}
+.ctrl .play svg{width:58px;height:58px}
+.ctrl .fav svg{width:30px;height:30px;fill:none;stroke:#fff;stroke-width:2;stroke-linejoin:round}
+.ctrl .fav[aria-pressed="true"] svg{fill:#ff2d55;stroke:#ff2d55}
+.vol{display:flex;align-items:center;gap:12px;padding:0 8px}
+.vol svg{flex:none;width:22px;height:22px;fill:#fff}
+.vol input[type=range]::-webkit-slider-thumb{width:28px;height:28px;margin-top:-11.5px}
+.vol input[type=range]::-moz-range-thumb{width:28px;height:28px}
+.fx{display:flex;gap:10px;margin-top:14px}
+.fx button{flex:1;border:1.5px solid rgba(155,92,255,.6);background:rgba(155,92,255,.12);border-radius:14px;padding:12px 8px;font:900 13px var(--body);letter-spacing:.05em;cursor:pointer}
+.fx button[aria-pressed="true"]{background:var(--violet);border-color:var(--violet)}
+.fx button:disabled{opacity:.4;cursor:not-allowed}
+.note{font:700 12px var(--body);color:#a995d6;margin:10px 4px 0;text-align:center}
+
+button:focus-visible,input:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.toast{position:fixed;left:50%;bottom:calc(var(--nav) + env(safe-area-inset-bottom) + 84px);transform:translate(-50%,20px);opacity:0;background:#fff;color:#1a0b2e;font:800 13px var(--body);padding:10px 16px;border-radius:999px;transition:.25s;z-index:60;max-width:90vw;text-align:center;pointer-events:none}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){.sk .ph{animation:none}#full{transition:none}}
+</style>
+</head>
+<body>
+<canvas id="glass" aria-hidden="true"></canvas>
+<div id="artbg" aria-hidden="true"></div>
+<div class="shade" aria-hidden="true"></div>
+
+<div class="wrap">
+  <div class="logo">KAWAII PLAYER</div>
+
+  <!-- ANIMES A-Z -->
+  <section id="vAnime">
+    <label class="field">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+      <input id="aq" type="search" placeholder="Chercher un anime…" enterkeyhint="search" autocomplete="off">
+    </label>
+    <div class="seg" id="sortSeg">
+      <button type="button" data-s="az" aria-pressed="true">A → Z</button>
+      <button type="button" data-s="za" aria-pressed="false">Z → A</button>
+      <button type="button" data-s="more" aria-pressed="false">Plus de sons</button>
+    </div>
+    <div class="count" id="acount">Chargement…</div>
+    <div class="grid" id="agrid"></div>
+    <div id="amsg"></div>
+    <button type="button" class="ghost" id="rescan" style="width:100%;margin-top:14px">Actualiser la bibliothèque</button>
+  </section>
+
+  <!-- FICHE ANIME -->
+  <section id="vDetail" hidden>
+    <button type="button" class="back" id="back">← Animes</button>
+    <div class="dhead">
+      <span id="dcoverBox"></span>
+      <div class="t">
+        <h1 id="dtitle"></h1>
+        <p id="dmeta"></p>
+        <button type="button" class="playall" id="playall">▶ Tout lire</button>
+      </div>
+    </div>
+    <ul class="list" id="dlist"></ul>
+  </section>
+
+  <!-- FAVORIS -->
+  <section id="vFavs" hidden>
+    <div class="count" id="fcount"></div>
+    <ul class="list" id="flist"></ul>
+  </section>
+
+  <!-- PLAYLISTS -->
+  <section id="vPls" hidden>
+    <div class="plhead"><h2>Mes playlists</h2><button type="button" class="newbtn" id="plNewBtn">+ Nouvelle</button></div>
+    <form id="plNewForm" class="inline" hidden autocomplete="off">
+      <label class="field"><input id="plNewName" type="text" placeholder="Nom de la playlist" maxlength="40"></label>
+      <button class="go2" type="submit">Créer</button>
+    </form>
+    <ul class="list" id="plGrid"></ul>
+  </section>
+  <section id="vPlDetail" hidden>
+    <button type="button" class="back" id="plBack">← Playlists</button>
+    <h1 class="pltitle" id="plTitle"></h1>
+    <p class="plmeta" id="plMeta"></p>
+    <div class="plactions">
+      <button type="button" class="playall" id="plPlay">▶ Tout lire</button>
+      <button type="button" class="ghost" id="plRen">Renommer</button>
+      <button type="button" class="ghost" id="plDel">Supprimer</button>
+    </div>
+    <form id="plRenForm" class="inline" hidden autocomplete="off">
+      <label class="field"><input id="plRenName" type="text" maxlength="40"></label>
+      <button class="go2" type="submit">OK</button>
+    </form>
+    <ul class="list" id="plList"></ul>
+  </section>
+</div>
+
+<div id="mini" hidden>
+  <button class="open" id="miniOpen" aria-label="Ouvrir le lecteur">
+    <span id="miniArt"></span>
+    <span class="t"><b id="miniTitle"></b><i id="miniArtist"></i></span>
+  </button>
+  <button class="mp" id="miniPlay" aria-label="Lecture"><svg viewBox="0 0 24 24" id="miniIcon"><path d="M8 5v14l11-7z"/></svg></button>
+  <div class="prog" id="miniProg"></div>
+</div>
+
+<nav aria-label="Navigation">
+  <button id="nAnime" aria-current="page"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/></svg>Animes</button>
+  <button id="nPls"><svg viewBox="0 0 24 24"><path d="M4 6h12M4 12h12M4 18h7"/><path d="M18 13v7M14.5 16.5h7"/></svg>Playlists</button>
+  <button id="nFavs"><svg viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 3 4.8 6.6 4.8c2 0 3.6 1.1 5.4 3.2 1.8-2.1 3.4-3.2 5.4-3.2 3.6 0 5.7 3.6 4.2 7C19.5 16.4 12 21 12 21z"/></svg>Favoris</button>
+</nav>
+
+<div id="full" aria-hidden="true">
+  <div class="fwrap">
+    <div class="ftop">
+      <button id="close" aria-label="Fermer"><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
+      <span>En lecture</span>
+      <i style="width:40px"></i>
+    </div>
+    <div class="player">
+      <div class="cover"><div class="ph" id="ph">♪</div><img id="art" alt="" hidden></div>
+      <div class="meta">
+        <div class="txt">
+          <div class="artist" id="artist">Choisis un son</div>
+          <div class="title" id="title">Kawaii Player</div>
+          <div class="mode" id="mode">[ Normal ]</div>
+        </div>
+        <button type="button" class="addpl" id="addpl" aria-label="Ajouter à une playlist ou en créer une"><svg viewBox="0 0 24 24"><path d="M3 6h12M3 11h12M3 16h7"/><path d="M18 11v8M14 15h8"/></svg></button>
+      </div>
+      <div class="bar">
+        <input type="range" id="seek" min="0" max="1000" value="0" aria-label="Position">
+        <div class="times"><span id="cur">0:00</span><span id="rem">-0:00</span></div>
+      </div>
+      <div class="ctrl">
+        <button id="prev" aria-label="Précédent"><svg viewBox="0 0 24 24"><path d="M11 6v12l-8.5-6zM21 6v12l-8.5-6z"/></svg></button>
+        <button id="play" class="play" aria-label="Lecture"><svg id="playIcon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button>
+        <button id="next" aria-label="Suivant"><svg viewBox="0 0 24 24"><path d="M13 6v12l8.5-6zM3 6v12l8.5-6z"/></svg></button>
+        <button id="fav" class="fav" aria-pressed="false" aria-label="Favori"><svg viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 3 4.8 6.6 4.8c2 0 3.6 1.1 5.4 3.2 1.8-2.1 3.4-3.2 5.4-3.2 3.6 0 5.7 3.6 4.2 7C19.5 16.4 12 21 12 21z"/></svg></button>
+      </div>
+      <div class="vol">
+        <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 4V5L7 9z"/></svg>
+        <input type="range" id="vol" min="0" max="100" value="80" aria-label="Volume">
+        <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 4V5L7 9zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/></svg>
+      </div>
+      <div class="fx">
+        <button type="button" id="fxSpeed" aria-pressed="false">⚡ SPEED UP</button>
+        <button type="button" id="fxReverb" aria-pressed="false">🌌 REVERB</button>
+      </div>
+      <div class="note" id="note" hidden></div>
+    </div>
+  </div>
+</div>
+
+<div id="sheet" hidden>
+  <div class="sheetbg" id="sheetBg"></div>
+  <div class="sheetbox" role="dialog" aria-label="Playlists">
+    <div class="sheethead"><b>Ajouter à une playlist</b><button type="button" id="sheetClose" aria-label="Fermer">✕</button></div>
+    <div class="sheetsong" id="sheetSong"></div>
+    <ul class="list" id="sheetList"></ul>
+    <form id="newForm" class="newform" autocomplete="off">
+      <input id="newName" type="text" placeholder="Nouvelle playlist…" maxlength="40">
+      <button class="go2" type="submit">Créer</button>
+    </form>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+<audio id="audio" preload="auto" playsinline></audio>
+
+<script>
+(function(){
+'use strict';
+var $=function(id){return document.getElementById(id)};
+var audio=$('audio');
+var state={queue:[],idx:-1,view:'anime',favs:[],speed:false,reverb:false,wantPlay:false};
+
+/* ---------- utilitaires ---------- */
+function lsGet(k,d){try{var v=JSON.parse(localStorage.getItem(k));return v==null?d:v}catch(e){return d}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+state.favs=lsGet('kp_favs2',[]);state.pls=lsGet('kp_pls',[]);
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(m){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]})}
+function fmt(t){if(!isFinite(t)||t<0)t=0;var m=Math.floor(t/60),s=Math.floor(t%60);return m+':'+(s<10?'0':'')+s}
+var tt;function toast(m){var t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(tt);tt=setTimeout(function(){t.classList.remove('show')},2400)}
+function setRange(el){el.style.setProperty('--p',(el.value-el.min)/(el.max-el.min)*100+'%')}
+
+/* ---------- fond vitrail ---------- */
+function paintGlass(){
+  var c=$('glass'),w=c.width=innerWidth,h=c.height=innerHeight,g=c.getContext('2d');
+  var pal=['#ff7fd8','#ff5fd2','#b57bff','#8a5cff','#27d9ff','#6fe3ff','#ffb36b','#ffd1f0','#7d6bff'];
+  var s=Math.max(64,Math.round(Math.min(w,h)/7));
+  g.fillStyle='#14062b';g.fillRect(0,0,w,h);
+  var seed=7;function r(){seed=(seed*9301+49297)%233280;return seed/233280}
+  for(var y=-s;y<h+s;y+=s){for(var x=-s;x<w+s;x+=s){
+    var j=function(){return (r()-.5)*s*.35};
+    var a=[x+j(),y+j()],b=[x+s+j(),y+j()],d=[x+j(),y+s+j()],e=[x+s+j(),y+s+j()];
+    [[a,b,d],[b,e,d]].forEach(function(t){
+      g.beginPath();g.moveTo(t[0][0],t[0][1]);g.lineTo(t[1][0],t[1][1]);g.lineTo(t[2][0],t[2][1]);g.closePath();
+      g.globalAlpha=.55+r()*.4;g.fillStyle=pal[Math.floor(r()*pal.length)];g.fill();
+      g.globalAlpha=.5;g.strokeStyle='#fff';g.lineWidth=1.4;g.stroke();
+    });
+  }}
+  g.globalAlpha=1;
+}
+paintGlass();var rt;addEventListener('resize',function(){clearTimeout(rt);rt=setTimeout(paintGlass,200)});
+
+/* ---------- navigation ---------- */
+var scrollMem=0;
+function setView(v){
+  state.view=v;
+  $('vAnime').hidden=v!=='anime';$('vDetail').hidden=true;$('vFavs').hidden=v!=='favs';
+  $('vPls').hidden=v!=='pls';$('vPlDetail').hidden=true;
+  [['nAnime','anime'],['nPls','pls'],['nFavs','favs']].forEach(function(p){
+    if(p[1]===v)$(p[0]).setAttribute('aria-current','page');else $(p[0]).removeAttribute('aria-current');
+  });
+  if(v==='favs')renderFavs();
+  if(v==='pls')renderPls();
+  window.scrollTo(0,0);
+}
+$('nAnime').onclick=function(){setView('anime')};
+$('nPls').onclick=function(){setView('pls')};
+$('nFavs').onclick=function(){setView('favs')};
+function openFull(){$('full').classList.add('open');$('full').setAttribute('aria-hidden','false')}
+function closeFull(){$('full').classList.remove('open');$('full').setAttribute('aria-hidden','true')}
+$('miniOpen').onclick=openFull;$('close').onclick=closeFull;
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){if(!$('sheet').hidden)closeSheet();else closeFull()}});
+
+/* ---------- effets : speed up + reverb ---------- */
+var ctx=null,dry,wet,corsOK=null;
+function makeIR(c){
+  var rate=c.sampleRate,len=Math.floor(rate*2.6),buf=c.createBuffer(2,len,rate);
+  for(var ch=0;ch<2;ch++){var d=buf.getChannelData(ch);for(var i=0;i<len;i++){d[i]=(Math.random()*2-1)*Math.pow(1-i/len,2.6)}}
+  return buf;
+}
+function initGraph(){
+  if(ctx||corsOK!==true)return;
+  try{
+    var AC=window.AudioContext||window.webkitAudioContext;ctx=new AC();
+    var src=ctx.createMediaElementSource(audio),conv=ctx.createConvolver();
+    conv.buffer=makeIR(ctx);dry=ctx.createGain();wet=ctx.createGain();
+    src.connect(dry);dry.connect(ctx.destination);src.connect(conv);conv.connect(wet);wet.connect(ctx.destination);
+    applyFx();
+  }catch(e){ctx=null}
+}
+function wake(){if(ctx&&ctx.state==='suspended')ctx.resume()}
+function applyFx(){
+  audio.preservesPitch=false;audio.mozPreservesPitch=false;audio.webkitPreservesPitch=false;
+  audio.playbackRate=state.speed?1.25:1;
+  if(ctx){dry.gain.value=state.reverb?.78:1;wet.gain.value=state.reverb?.9:0}
+  var m=[];if(state.speed)m.push('Speed up');if(state.reverb)m.push('Reverb');
+  $('mode').textContent='[ '+(m.length?m.join('+'):'Normal')+' ]';
+  $('fxSpeed').setAttribute('aria-pressed',state.speed);$('fxReverb').setAttribute('aria-pressed',state.reverb);
+}
+$('fxSpeed').onclick=function(){state.speed=!state.speed;applyFx()};
+$('fxReverb').onclick=function(){
+  if(corsOK===false)return;
+  if(!ctx){toast('Lance un son d\'abord');return}
+  state.reverb=!state.reverb;wake();applyFx();
+};
+
+/* ---------- lecteur ---------- */
+function cur(){return state.queue[state.idx]}
+function isFav(t){return !!t&&state.favs.some(function(f){return f.id===t.id})}
+function thumb(t){return t.cover?'<img src="'+esc(t.cover)+'" alt="" loading="lazy">':'<span class="th"></span>'}
+function show(t){
+  $('title').textContent=t.name;$('artist').textContent=t.artist+(t.anime?' · '+t.anime:'');
+  var img=$('art');
+  if(t.cover){img.src=t.cover;img.hidden=false;$('ph').hidden=true;$('artbg').style.backgroundImage='url("'+t.cover+'")'}
+  else{img.hidden=true;$('ph').hidden=false;$('artbg').style.backgroundImage='none'}
+  $('fav').setAttribute('aria-pressed',isFav(t));
+  $('mini').hidden=false;$('miniArt').innerHTML=thumb(t);$('miniTitle').textContent=t.name;$('miniArtist').textContent=t.artist+(t.anime?' · '+t.anime:'');
+  if('mediaSession' in navigator){try{navigator.mediaSession.metadata=new MediaMetadata({title:t.name,artist:t.artist,album:t.anime||'',artwork:t.cover?[{src:t.cover}]:[]})}catch(e){}}
+  renderDetail();if(state.view==='favs')renderFavs();if(!$('vPlDetail').hidden)renderPlDetail();
+}
+var loadTok=0;
+function load(i,autoplay,depth){
+  if(i<0||i>=state.queue.length)return;
+  state.idx=i;var t=cur();show(t);
+  var tok=++loadTok;
+  function go(){
+    if(tok!==loadTok)return;
+    audio.crossOrigin=corsOK===false?null:'anonymous';
+    audio.src=t.url;audio.load();applyFx();
+    if(autoplay){wake();audio.play().catch(function(){toast('Touche ▶ pour lancer')})}
+  }
+  if(t.url){go();return}
+  toast('Fichier introuvable');
+}
+
+function toggle(){
+  if(!cur())return;
+  wake();
+  if(audio.paused)audio.play().catch(function(){toast('Lecture bloquée, réessaie.')});else audio.pause();
+}
+function step(d){
+  if(!state.queue.length)return;
+  if(d<0&&audio.currentTime>3){audio.currentTime=0;return}
+  load((state.idx+d+state.queue.length)%state.queue.length,true);
+}
+var fellBack=false;
+audio.addEventListener('loadedmetadata',function(){
+  fellBack=false;
+  if(corsOK===null){corsOK=true;initGraph()}
+  applyFx();
+});
+audio.addEventListener('error',function(){
+  if(audio.crossOrigin==='anonymous'&&!ctx&&corsOK!==false){
+    fellBack=true;corsOK=false;state.reverb=false;$('fxReverb').disabled=true;applyFx();
+    $('note').textContent='Le reverb n\'est pas disponible sur ce navigateur. Speed up marche.';$('note').hidden=false;
+    load(state.idx,state.wantPlay);return;
+  }
+  if(fellBack){fellBack=false;corsOK=null;$('fxReverb').disabled=false;$('note').hidden=true}
+  toast('Impossible de lire ce fichier.');
+});
+audio.addEventListener('play',function(){state.wantPlay=true;sync()});
+audio.addEventListener('pause',function(){state.wantPlay=false;sync()});
+audio.addEventListener('ended',function(){step(1)});
+audio.addEventListener('timeupdate',function(){
+  var d=audio.duration||90,p=audio.currentTime/d;
+  $('seek').value=p*1000;setRange($('seek'));$('miniProg').style.width=p*100+'%';
+  $('cur').textContent=fmt(audio.currentTime);$('rem').textContent='-'+fmt((d-audio.currentTime)/(audio.playbackRate||1));
+});
+function sync(){
+  var playing=!audio.paused,pp='<path d="M6 5h4v14H6zM14 5h4v14h-4z"/>',pl='<path d="M8 5v14l11-7z"/>';
+  $('playIcon').innerHTML=playing?pp:pl;$('miniIcon').innerHTML=playing?pp:pl;
+  $('play').setAttribute('aria-label',playing?'Pause':'Lecture');
+}
+$('seek').addEventListener('input',function(){var d=audio.duration;if(isFinite(d))audio.currentTime=this.value/1000*d;setRange(this)});
+$('vol').addEventListener('input',function(){audio.volume=this.value/100;setRange(this)});
+$('play').onclick=toggle;$('miniPlay').onclick=toggle;$('prev').onclick=function(){step(-1)};$('next').onclick=function(){step(1)};
+if('mediaSession' in navigator){
+  try{
+    navigator.mediaSession.setActionHandler('play',toggle);navigator.mediaSession.setActionHandler('pause',toggle);
+    navigator.mediaSession.setActionHandler('previoustrack',function(){step(-1)});
+    navigator.mediaSession.setActionHandler('nexttrack',function(){step(1)});
+  }catch(e){}
+}
+
+/* ---------- favoris ---------- */
+function toggleFav(t){
+  if(!t)return;
+  if(isFav(t)){state.favs=state.favs.filter(function(f){return f.id!==t.id})}else{state.favs.unshift(t);toast('Ajouté aux favoris')}
+  lsSet('kp_favs2',state.favs);
+  $('fav').setAttribute('aria-pressed',isFav(cur()));renderDetail();renderFavs();
+}
+$('fav').onclick=function(){toggleFav(cur())};
+
+/* ---------- lignes de sons ---------- */
+var HEART='<svg viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 3 4.8 6.6 4.8c2 0 3.6 1.1 5.4 3.2 1.8-2.1 3.4-3.2 5.4-3.2 3.6 0 5.7 3.6 4.2 7C19.5 16.4 12 21 12 21z"/></svg>';
+function rows(arr,withAnime,off){
+  var id=cur()&&cur().id;
+  return arr.map(function(t,i){
+    var left=withAnime?thumb(t):'<span class="tag">'+esc(t.tag||'♪')+'</span>';
+    var sub=withAnime?(t.tag?t.tag+' · ':'')+t.anime+' · '+t.artist:t.artist;
+    return '<li class="row'+(t.id===id?' on':'')+'"><button class="rmain" data-i="'+(i+(off||0))+'">'+left
+      +'<span class="t"><b>'+esc(t.name)+'</b><i>'+esc(sub)+'</i></span></button>'
+      +'<button class="rheart" data-i="'+(i+(off||0))+'" aria-pressed="'+isFav(t)+'" aria-label="Favori">'+HEART+'</button></li>';
+  }).join('');
+}
+function bindList(ul,getArr){
+  ul.addEventListener('click',function(e){
+    var arr=getArr(),h=e.target.closest('.rheart');
+    if(h){toggleFav(arr[+h.dataset.i]);return}
+    var m=e.target.closest('.rmain');if(!m)return;
+    var t=arr[+m.dataset.i];
+    if(!t)return;
+    if(t.state==='no'){toast('Pas disponible en version complète');return}
+    var q=arr.filter(function(x){return x.state!=='no'});
+    state.queue=q;load(q.indexOf(t),true);
+  });
+}
+var D={tracks:[],id:0,entries:[],main:null,cur:null};
+function renderDetail(){if(!$('vDetail').hidden&&D.tracks.length)paintSongs()}
+function renderFavs(){
+  $('flist').innerHTML=state.favs.length?rows(state.favs,true):'<li class="msg">Aucun favori pour l\'instant.<br>Touche le ♥ à côté d\'un opening ou d\'un ending.</li>';
+  $('fcount').textContent=state.favs.length?state.favs.length+' son'+(state.favs.length>1?'s':''):'';
+}
+bindList($('dlist'),function(){return D.tracks});
+bindList($('flist'),function(){return state.favs});
+
+/* ---------- playlists ---------- */
+function savePls(){lsSet('kp_pls',state.pls)}
+function plById(id){return state.pls.filter(function(p){return p.id===id})[0]}
+function newPl(name){var p={id:'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),name:name,tracks:[]};state.pls.unshift(p);return p}
+function cloneTrack(t){return JSON.parse(JSON.stringify(t))}
+function inPl(p,t){return p.tracks.some(function(x){return x.id===t.id})}
+function cnt(n){return n+' son'+(n>1?'s':'')}
+var PL={id:null};
+
+/* feuille « ajouter à une playlist » */
+var sheetTrack=null;
+function renderSheet(){
+  if(!sheetTrack)return;
+  $('sheetSong').textContent=sheetTrack.name+' · '+sheetTrack.artist;
+  $('sheetList').innerHTML=state.pls.length?state.pls.map(function(p){
+    return '<li><button type="button" class="plrow" data-id="'+p.id+'" aria-pressed="'+inPl(p,sheetTrack)+'"><span class="plname">'+esc(p.name)+'</span><span class="plcount">'+cnt(p.tracks.length)+'</span><span class="chk">✓</span></button></li>';
+  }).join(''):'<li class="msg">Aucune playlist.<br>Crée la première ci-dessous.</li>';
+}
+function openSheet(t){
+  if(!t){toast('Lance un son d\'abord');return}
+  sheetTrack=t;renderSheet();$('sheet').hidden=false;
+}
+function closeSheet(){$('sheet').hidden=true;sheetTrack=null}
+$('addpl').onclick=function(){openSheet(cur())};
+$('sheetBg').onclick=closeSheet;$('sheetClose').onclick=closeSheet;
+$('sheetList').addEventListener('click',function(e){
+  var b=e.target.closest('.plrow');if(!b||!sheetTrack)return;
+  var p=plById(b.dataset.id);if(!p)return;
+  if(inPl(p,sheetTrack)){p.tracks=p.tracks.filter(function(x){return x.id!==sheetTrack.id});toast('Retiré de « '+p.name+' »')}
+  else{p.tracks.push(cloneTrack(sheetTrack));toast('Ajouté à « '+p.name+' »')}
+  savePls();renderSheet();renderPls();
+});
+$('newForm').addEventListener('submit',function(e){
+  e.preventDefault();if(!sheetTrack)return;
+  var n=$('newName').value.trim()||'Playlist '+(state.pls.length+1);
+  var p=newPl(n);p.tracks.push(cloneTrack(sheetTrack));
+  savePls();$('newName').value='';renderSheet();renderPls();toast('« '+n+' » créée, son ajouté');
+});
+
+/* écran playlists */
+function renderPls(){
+  $('plGrid').innerHTML=state.pls.length?state.pls.map(function(p){
+    var c=p.tracks[0]&&p.tracks[0].cover;
+    return '<li class="row"><button type="button" class="rmain" data-id="'+p.id+'">'+(c?'<img src="'+esc(c)+'" alt="" loading="lazy">':'<span class="th"></span>')
+      +'<span class="t"><b>'+esc(p.name)+'</b><i>'+cnt(p.tracks.length)+'</i></span></button>'
+      +'<button type="button" class="rheart rplay" data-id="'+p.id+'" aria-label="Lire"><svg viewBox="0 0 24 24" style="fill:#fff;stroke:none"><path d="M8 5v14l11-7z"/></svg></button></li>';
+  }).join(''):'<li class="msg">Aucune playlist pour l\'instant.<br>Touche « + Nouvelle » pour en créer une.</li>';
+  if(!$('vPlDetail').hidden)renderPlDetail();
+}
+function plRows(p){
+  var id=cur()&&cur().id;
+  return p.tracks.map(function(t,i){
+    return '<li class="row'+(t.id===id?' on':'')+'"><button type="button" class="rmain" data-i="'+i+'">'+thumb(t)
+      +'<span class="t"><b>'+esc(t.name)+'</b><i>'+esc((t.tag&&t.tag!=='♪'?t.tag+' · ':'')+t.anime+' · '+t.artist)+'</i></span></button>'
+      +'<button type="button" class="rheart rem" data-i="'+i+'" aria-label="Retirer de la playlist"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></li>';
+  }).join('');
+}
+function renderPlDetail(){
+  var p=plById(PL.id);if(!p){setView('pls');return}
+  $('plTitle').textContent=p.name;$('plMeta').textContent=cnt(p.tracks.length);
+  $('plPlay').hidden=!p.tracks.length;
+  $('plList').innerHTML=p.tracks.length?plRows(p):'<li class="msg">Cette playlist est vide.<br>Dans le lecteur, touche le bouton + pour y ajouter un son.</li>';
+}
+function openPl(id){
+  PL.id=id;$('vPls').hidden=true;$('vPlDetail').hidden=false;$('plRenForm').hidden=true;
+  $('plDel').dataset.arm='0';$('plDel').textContent='Supprimer';
+  renderPlDetail();window.scrollTo(0,0);
+}
+$('plNewBtn').onclick=function(){var f=$('plNewForm');f.hidden=!f.hidden;if(!f.hidden)$('plNewName').focus()};
+$('plNewForm').addEventListener('submit',function(e){
+  e.preventDefault();
+  var n=$('plNewName').value.trim()||'Playlist '+(state.pls.length+1);
+  newPl(n);savePls();$('plNewName').value='';$('plNewForm').hidden=true;renderPls();toast('Playlist « '+n+' » créée');
+});
+$('plGrid').addEventListener('click',function(e){
+  var pb=e.target.closest('.rplay');
+  if(pb){var p=plById(pb.dataset.id);if(p&&p.tracks.length){state.queue=p.tracks.slice();load(0,true)}else toast('Playlist vide');return}
+  var m=e.target.closest('.rmain');if(m)openPl(m.dataset.id);
+});
+$('plBack').onclick=function(){setView('pls')};
+$('plPlay').onclick=function(){var p=plById(PL.id);if(p&&p.tracks.length){state.queue=p.tracks.slice();load(0,true)}};
+$('plRen').onclick=function(){var p=plById(PL.id);if(!p)return;$('plRenForm').hidden=false;$('plRenName').value=p.name;$('plRenName').focus()};
+$('plRenForm').addEventListener('submit',function(e){
+  e.preventDefault();var p=plById(PL.id),n=$('plRenName').value.trim();
+  if(p&&n){p.name=n;savePls();renderPlDetail();renderPls()}
+  $('plRenForm').hidden=true;
+});
+var delT;
+$('plDel').onclick=function(){
+  var b=$('plDel');
+  if(b.dataset.arm==='1'){
+    clearTimeout(delT);state.pls=state.pls.filter(function(p){return p.id!==PL.id});savePls();
+    b.dataset.arm='0';b.textContent='Supprimer';setView('pls');toast('Playlist supprimée');return;
+  }
+  b.dataset.arm='1';b.textContent='Confirmer ?';
+  delT=setTimeout(function(){b.dataset.arm='0';b.textContent='Supprimer'},3000);
+};
+$('plList').addEventListener('click',function(e){
+  var p=plById(PL.id);if(!p)return;
+  var r=e.target.closest('.rem');
+  if(r){p.tracks.splice(+r.dataset.i,1);savePls();renderPlDetail();renderPls();return}
+  var m=e.target.closest('.rmain');if(m){state.queue=p.tracks.slice();load(+m.dataset.i,true)}
+});
+
+/* ---------- bibliothèque : tes dossiers du dépôt GitHub ---------- */
+function tfetch(url,opts,ms){
+  var c=window.AbortController?new AbortController():null,t;
+  opts=opts||{};opts.credentials='omit';if(c)opts.signal=c.signal;
+  var timer=new Promise(function(_,rej){t=setTimeout(function(){if(c)c.abort();rej(new Error('délai'))},ms||10000)});
+  return Promise.race([fetch(url,opts),timer]).then(function(r){clearTimeout(t);return r},function(){clearTimeout(t);var e=new Error('réseau');e.net=true;throw e});
+}
+var AUD=/\.(mp3|m4a|aac|ogg|oga|opus|wav|flac|weba)$/i,IMGX=/\.(png|jpe?g|webp|gif|avif)$/i,BOX=/^(anim[eé]s?|musiques?|music|sons|songs|library|biblioth[eè]que)$/i;
+var NC=new Intl.Collator('fr',{numeric:true,sensitivity:'base'});
+function norm(s){return String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^\p{L}\p{N}]+/gu,' ').trim()}
+var LIB={animes:[],by:{},tr:{},ok:false};
+var BASE=/^https?:$/.test(location.protocol)?new URL('./',location.href).href:'https://usagi840.github.io/music/';
+function fileUrl(path){return BASE+path.split('/').map(encodeURIComponent).join('/')}
+function repoInfo(){
+  var q=new URLSearchParams(location.search).get('repo');
+  if(q&&/^[\w.-]+\/[\w.-]+$/.test(q)){var a=q.split('/');return{o:a[0],r:a[1]}}
+  var h=location.hostname.match(/^([\w-]+)\.github\.io$/i),seg=location.pathname.split('/').filter(Boolean)[0];
+  if(h)return{o:h[1],r:(seg&&!/\.html?$/i.test(seg))?seg:h[1]+'.github.io'};
+  return{o:'usagi840',r:'music'};
+}
+function fetchTree(){
+  var ri=repoInfo(),tries=['HEAD','main','master'];
+  function go(i){
+    if(i>=tries.length){var e=new Error('HTTP 404');e.status=404;return Promise.reject(e)}
+    return tfetch('https://api.github.com/repos/'+ri.o+'/'+ri.r+'/git/trees/'+tries[i]+'?recursive=1',{},12000).then(function(r){
+      if(r.status===404)return go(i+1);
+      if(!r.ok){var e=new Error('HTTP '+r.status);e.status=r.status;throw e}
+      return r.json();
+    });
+  }
+  return go(0);
+}
+function parseSong(fn){
+  var b=fn.replace(AUD,'').replace(/_/g,' ').trim(),tag='♪',kind='X',m;
+  m=/^(\d{1,3})\s*[.\-)]+\s*/.exec(b)||/^(\d{1,3})\s+(?=\D)/.exec(b);
+  if(m)b=b.slice(m[0].length);
+  m=/^(opening|ending|op|ed)(?:\s*(\d{1,2}))?(?=\s|[-:._)]|$)[\s\-:._)]*/i.exec(b);
+  if(m){kind=/^o/i.test(m[1])?'OP':'ED';tag=kind+(m[2]?+m[2]:'');if(b.length>m[0].length)b=b.slice(m[0].length)}
+  var artist='',i=b.indexOf(' - ');
+  if(i>0){artist=b.slice(0,i).trim();b=b.slice(i+3).trim()}
+  return{name:b||fn.replace(AUD,''),artist:artist,tag:tag,kind:kind};
+}
+function pickCover(imgs){
+  var pr=['image','cover','poster','folder','thumb','thumbnail','art','front'],best=null,bs=1e9;
+  imgs.forEach(function(e){
+    var k=pr.indexOf(e.fn.replace(IMGX,'').toLowerCase()),s=(k<0?50:k)*10+e.rel.length;
+    if(s<bs){bs=s;best=e}
+  });
+  return best;
+}
+var KO={OP:0,ED:1,X:2};
+function buildLib(tree){
+  var groups={};
+  (tree.tree||[]).forEach(function(f){
+    if(f.type!=='blob')return;
+    var parts=f.path.split('/');
+    if(parts.some(function(s){return s.charAt(0)==='.'}))return;
+    var skip=(parts.length>=3&&BOX.test(parts[0]))?1:0;
+    if(parts.length-skip<2)return;
+    var name=parts[skip],rel=parts.slice(skip+1),fn=rel[rel.length-1];
+    var g=groups[name]||(groups[name]={n:name,imgs:[],aud:[]}),ent={path:f.path,rel:rel,fn:fn};
+    if(AUD.test(fn))g.aud.push(ent);else if(IMGX.test(fn))g.imgs.push(ent);
+  });
+  return Object.keys(groups).map(function(k){return groups[k]}).filter(function(g){return g.aud.length}).map(function(g){
+    var cv=pickCover(g.imgs);
+    var t=g.aud.map(function(e){
+      var p=parseSong(e.fn);
+      return{path:e.path,file:e.fn,sec:e.rel.slice(0,-1).join(' / '),name:p.name,artist:p.artist,tag:p.tag,kind:p.kind};
+    });
+    t.sort(function(a,b){return NC.compare(a.sec,b.sec)||(KO[a.kind]-KO[b.kind])||NC.compare(a.file,b.file)});
+    return{n:g.n,c:cv?cv.path:'',t:t.map(function(x){return[x.path,x.name,x.artist,x.tag,x.kind,x.sec]})};
+  });
+}
+function hydrate(raw){
+  LIB.animes=[];LIB.by={};LIB.tr={};
+  raw.forEach(function(r){
+    var cover=r.c?fileUrl(r.c):'';
+    var a={id:'L'+hash32(r.n),name:r.n,alt:r.n,img:cover,cover:cover,tracks:[]};
+    r.t.forEach(function(x){
+      var t={id:'L'+hash32(x[0]),name:x[1],artist:x[2]||'Artiste inconnu',anime:r.n,tag:x[3],kind:x[4],sec:x[5],cover:cover,url:fileUrl(x[0]),state:'ok',full:true,_p:x[0]};
+      a.tracks.push(t);LIB.tr[x[0]]=t;
+    });
+    LIB.animes.push(a);LIB.by[a.id]=a;
+  });
+  LIB.ok=true;
+}
+function hash32(s){var h=5381;for(var i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return (h>>>0).toString(36)}
+var A={q:'',sort:'az'};
+function card(a){
+  return '<button class="acard" data-id="'+a.id+'">'+(a.img?'<img src="'+esc(a.img)+'" alt="" loading="lazy">':'<div class="ph"></div>')+'<b>'+esc(a.name)+'</b><small>'+cnt(a.tracks.length)+'</small></button>';
+}
+function skel(n){var h='';for(var i=0;i<n;i++)h+='<div class="acard sk"><div class="ph"></div><b>.</b></div>';return h}
+var EMPTY='<div class="msg">Ta bibliothèque est vide.<br>Dans ton dépôt GitHub, crée un dossier par anime (par exemple <b>Demon Slayer</b>) avec une image <b>image.png</b> et tes chansons (mp3, m4a…).<br>Puis touche « Actualiser la bibliothèque ».</div>';
+function renderAnimes(){
+  var q=norm(A.q);
+  var list=LIB.animes.filter(function(a){return !q||norm(a.name).indexOf(q)>-1||a.tracks.some(function(t){return norm(t.name).indexOf(q)>-1})});
+  list.sort(function(x,y){
+    if(A.sort==='more')return (y.tracks.length-x.tracks.length)||NC.compare(x.name,y.name);
+    return A.sort==='za'?NC.compare(y.name,x.name):NC.compare(x.name,y.name);
+  });
+  $('agrid').innerHTML=list.map(card).join('');
+  var ns=LIB.animes.reduce(function(n,a){return n+a.tracks.length},0);
+  $('acount').textContent=LIB.animes.length?(q?list.length+' résultat'+(list.length>1?'s':'')+' · ':'')+LIB.animes.length+' animes · '+ns+' sons':'';
+  $('amsg').innerHTML=!LIB.animes.length?EMPTY:(!list.length?'<div class="msg">Aucun résultat pour « '+esc(A.q)+' ».</div>':'');
+  $('rescan').hidden=false;
+}
+function libErr(e){
+  if(e&&e.status===403)return 'GitHub limite les requêtes pour le moment.<br>Réessaie dans quelques minutes.<br><button type="button" data-act="retry">Réessayer</button>';
+  if(e&&e.status===404)return 'Dépôt GitHub introuvable ('+esc(repoInfo().o+'/'+repoInfo().r)+').<br>Ouvre l\'app avec <b>?repo=utilisateur/depot</b> à la fin de l\'adresse.<br><button type="button" data-act="retry">Réessayer</button>';
+  return 'Impossible de lire ta bibliothèque (connexion ?).<br><button type="button" data-act="retry">Réessayer</button>';
+}
+var libP=null;
+function loadLib(force){
+  if(libP)return libP;
+  var c=lsGet('kp_lib',null);
+  if(c&&c.a&&!LIB.ok){hydrate(c.a);renderAnimes()}
+  else if(!LIB.ok){$('acount').textContent='Chargement…';$('agrid').innerHTML=skel(12)}
+  if(!force&&c&&c.a&&Date.now()-c.t<120000){return Promise.resolve()}
+  libP=fetchTree().then(function(tree){
+    var raw=buildLib(tree),same=c&&c.a&&JSON.stringify(c.a)===JSON.stringify(raw);
+    lsSet('kp_lib',{t:Date.now(),a:raw});
+    if(!same||!LIB.ok){hydrate(raw);renderAnimes()}
+    if(force)toast(raw.length?raw.length+' animes dans ta bibliothèque':'Aucun dossier avec des sons trouvé');
+  }).catch(function(err){
+    if(!LIB.ok){$('agrid').innerHTML='';$('acount').textContent='';$('amsg').innerHTML='<div class="msg">'+libErr(err)+'</div>'}
+    else if(force)toast('Actualisation impossible pour le moment');
+  }).then(function(){libP=null;$('rescan').disabled=false});
+  return libP;
+}
+$('rescan').onclick=function(){$('rescan').disabled=true;loadLib(true)};
+document.addEventListener('click',function(e){var b=e.target.closest('[data-act="retry"]');if(b){$('amsg').innerHTML='';loadLib(true)}});
+$('sortSeg').addEventListener('click',function(e){
+  var b=e.target.closest('button');if(!b)return;
+  A.sort=b.dataset.s;
+  document.querySelectorAll('#sortSeg button').forEach(function(x){x.setAttribute('aria-pressed',x===b)});
+  renderAnimes();
+});
+var at;
+$('aq').addEventListener('input',function(){var v=this.value.trim();clearTimeout(at);at=setTimeout(function(){if(v!==A.q){A.q=v;if(LIB.ok)renderAnimes()}},150)});
+
+/* ---------- fiche d'un anime ---------- */
+function songRow(t,i){
+  var id=cur()&&cur().id;
+  return '<li class="row'+(t.id===id?' on':'')+'"><button type="button" class="rmain" data-i="'+i+'"><span class="tag">'+esc(t.tag||'♪')+'</span>'
+    +'<span class="t"><b>'+esc(t.name)+'</b><i>'+esc(t.artist)+'</i></span></button>'
+    +'<button type="button" class="rheart" data-i="'+i+'" aria-pressed="'+isFav(t)+'" aria-label="Favori">'+HEART+'</button></li>';
+}
+function paintSongs(){
+  var tr=D.tracks,groups=[],map={},h='';
+  tr.forEach(function(t,i){
+    var g=t.sec||({OP:'Openings',ED:'Endings',X:'Sons'})[t.kind];
+    if(!map[g]){map[g]=[];groups.push(g)}map[g].push(i);
+  });
+  groups.forEach(function(g){h+='<li class="count hd">'+esc(g)+' · '+map[g].length+'</li>'+map[g].map(function(i){return songRow(tr[i],i)}).join('')});
+  $('dlist').innerHTML=h;
+}
+function openAnime(id){
+  var a=LIB.by[id];if(!a)return;
+  if($('vDetail').hidden)scrollMem=window.scrollY;
+  $('vAnime').hidden=true;$('vDetail').hidden=false;window.scrollTo(0,0);
+  D.main=D.cur=a;D.id=a.id;D.tracks=a.tracks;D.entries=[a];
+  $('dcoverBox').innerHTML=a.cover?'<img src="'+esc(a.cover)+'" alt="">':'<div class="ph"></div>';
+  $('dtitle').textContent=a.name;$('dmeta').textContent=cnt(a.tracks.length);
+  $('playall').hidden=!a.tracks.length;paintSongs();
+}
+$('agrid').addEventListener('click',function(e){var b=e.target.closest('.acard');if(b&&!b.classList.contains('sk'))openAnime(b.dataset.id)});
+$('back').onclick=function(){$('vDetail').hidden=true;$('vAnime').hidden=false;window.scrollTo(0,scrollMem)};
+$('playall').onclick=function(){if(D.tracks.length){state.queue=D.tracks.slice();load(0,true)}};
+
+/* ---------- démarrage ---------- */
+audio.volume=.8;setRange($('vol'));setRange($('seek'));applyFx();sync();renderFavs();
+loadLib(false);
+})();
+</script>
+</body>
+</html>
